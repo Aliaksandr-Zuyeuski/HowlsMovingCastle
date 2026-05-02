@@ -47,30 +47,33 @@ def handle_update(update):
             return make_response(chat_id, msg_text)
         return None
 
-    if text.startswith("/start"):
+    if text.startswith("/start") or text.startswith("/list"):
         url = f"{WEBAPP_URL}?chat_id={chat_id}"
+        chat_type = msg["chat"].get("type", "private")
+
+        if chat_type == "private":
+            # В личке — inline кнопка
+            reply_markup = {
+                "inline_keyboard": [[{
+                    "text": "🛒 Открыть список",
+                    "web_app": {"url": url}
+                }]]
+            }
+        else:
+            # В группе — reply keyboard (кнопка внизу чата)
+            reply_markup = {
+                "keyboard": [[{
+                    "text": "🛒 Открыть список",
+                    "web_app": {"url": url}
+                }]],
+                "resize_keyboard": True,
+                "one_time_keyboard": False
+            }
+
         return make_response(
             chat_id,
             "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
-            reply_markup={
-                "inline_keyboard": [[{
-                    "text": "🛒 Открыть список",
-                    "web_app": {"url": url}
-                }]]
-            }
-        )
-
-    if text.startswith("/list"):
-        url = f"{WEBAPP_URL}?chat_id={chat_id}"
-        return make_response(
-            chat_id,
-            "Otwórz listę zakupów:",
-            reply_markup={
-                "inline_keyboard": [[{
-                    "text": "🛒 Открыть список",
-                    "web_app": {"url": url}
-                }]]
-            }
+            reply_markup=reply_markup
         )
 
     return None
