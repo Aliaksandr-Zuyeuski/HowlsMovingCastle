@@ -1,108 +1,96 @@
-"""
-api/webhook.py — Telegram бот через webhook
-Vercel вызывает эту функцию когда Telegram присылает обновление
-
-Переезд на polling (PythonAnywhere и др.):
-  Замените последние строки на run_polling() — см. комментарий внизу
-"""
-
-import os, json, sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
+import os, json
 from http.server import BaseHTTPRequestHandler
-import database as db
-
-BOT_TOKEN  = os.getenv("BOT_TOKEN")
-WEBAPP_URL = os.getenv("WEBAPP_URL")
-
 import urllib.request
+import urllib.parse
 
-def tg_api(method, data):
-    """Вызвать метод Telegram Bot API."""
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/{method}"
+BOT_TOKEN  = os.getenv("BOT_TOKEN", "")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")
+
+
+def send_message(chat_id, text, reply_markup=None):
+    data = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    if reply_markup:
+        data["reply_markup"] = json.dumps(reply_markup)
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    body = json.dumps(data).encode("utf-8")
     req = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode(),
+        url, data=body,
         headers={"Content-Type": "application/json"}
     )
     try:
-        urllib.request.urlopen(req)
+        resp = urllib.request.urlopen(req, timeout=10)
+        return resp.read()
     except Exception as e:
-        print(f"TG API error: {e}")
+        print(f"send_message error: {e}")
+        return None
 
 
-def send(chat_id, text, parse_mode="Markdown", reply_markup=None):
-    data = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
-    if reply_markup:
-        data["reply_markup"] = reply_markup
-    tg_api("sendMessage", data)
-
-
-def open_app_keyboard():
+def open_app_keyboard(chat_id):
+    url = f"{WEBAPP_URL}?chat_id={chat_id}"
     return {
         "inline_keyboard": [[{
             "text": "🛒 Открыть список",
-            "web_app": {"url": WEBAPP_URL}
+            "web_app": {"url": url}
         }]]
     }
 
 
 def handle_update(update):
-    """Обработать входящее обновление от Telegram."""
+    if "message" not in update:
+        return
 
-    # Данные из мини-приложения
-    if "message" in update:
-        msg = update["message"]
-        chat_id = msg["chat"]["id"]
-        user = msg.get("from", {})
-        actor = user.get("first_name") or user.get("username") or "Участник"
+    msg     = update["message"]
+    chat_id = msg["chat"]["id"]
+    text    = msg.get("text", "")
 
-        # WebApp data — уведомление в группу
-        if "web_app_data" in msg:
-            try:
-                payload = json.loads(msg["web_app_data"]["data"])
-            except Exception:
-                return
-
-            action = payload.get("action", "")
-            name   = payload.get("name", "")
-            amount = payload.get("amount", "")
-
-            notifications = {
-                "add":     f"🔔 *{actor}* dodał/a: *{name}*",
-                "take":    f"🙋 *{actor}* bierze: *{name}*",
-                "bought":  f"✅ *{actor}* kupił/a: *{name}*",
-                "delete":  f"🗑 *{actor}* usunął/a: *{name}*",
-                "expense": f"💰 *{actor}* dodał/a wydatek: *{amount} zł* — {name}",
-            }
-            msg_text = notifications.get(action)
-            if msg_text:
-                send(chat_id, msg_text)
+    # WebApp data
+    if "web_app_data" in msg:
+        try:
+            payload = json.loads(msg["web_app_data"]["data"])
+        except Exception:
             return
+        actor  = msg.get("from", {}).get("first_name", "Участник")
+        action = payload.get("action", "")
+        name   = payload.get("name", "")
+        amount = payload.get("amount", "")
+        notifications = {
+            "add":     f"🔔 *{actor}* dodał/a: *{name}*",
+            "take":    f"🙋 *{actor}* bierze: *{name}*",
+            "bought":  f"✅ *{actor}* kupił/a: *{name}*",
+            "delete":  f"🗑 *{actor}* usunął/a: *{name}*",
+            "expense": f"💰 *{actor}* dodał/a wydatek: *{amount} zł* — {name}",
+        }
+        msg_text = notifications.get(action)
+        if msg_text:
+            send_message(chat_id, msg_text)
+        return
 
-        # Обычное сообщение
-        text = msg.get("text", "")
+    if text.startswith("/start"):
+        send_message(
+            chat_id,
+            "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
+            reply_markup=open_app_keyboard(chat_id)
+        )
+    elif text.startswith("/list"):
+        send_message(
+            chat_id,
+            "Otwórz listę zakupów:",
+            reply_markup=open_app_keyboard(chat_id)
+        )
 
-        if text == "/start":
-            db.init_db()
-            send(
-                chat_id,
-                "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę zakupów:",
-                reply_markup=open_app_keyboard()
-            )
-
-        elif text == "/list":
-            send(chat_id, "Otwórz listę:", reply_markup=open_app_keyboard())
-
-
-# ── Vercel handler ───────────────────────────────────────────────
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length)
+        body   = self.rfile.read(length)
         try:
             update = json.loads(body)
+            print(f"Update: {json.dumps(update)[:200]}")
             handle_update(update)
         except Exception as e:
             print(f"Error: {e}")
@@ -117,28 +105,3 @@ class handler(BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
-
-
-# ── Для переезда на polling (PythonAnywhere, локально) ───────────
-# Раскомментируйте и запустите: python api/webhook.py
-#
-# from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-# from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-#
-# async def start(update, ctx):
-#     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🛒 Открыть список", web_app=WebAppInfo(url=WEBAPP_URL))]])
-#     await update.message.reply_text("🛒 Koszyk", reply_markup=kb)
-#
-# async def webapp_data(update, ctx):
-#     payload = json.loads(update.message.web_app_data.data)
-#     actor = update.effective_user.first_name
-#     action, name = payload.get("action"), payload.get("name","")
-#     msgs = {"add":f"🔔 *{actor}* dodał/a: *{name}*","take":f"🙋 *{actor}* bierze: *{name}*",
-#             "bought":f"✅ *{actor}* kupił/a: *{name}*","delete":f"🗑 *{actor}* usunął/a: *{name}*"}
-#     if msgs.get(action):
-#         await ctx.bot.send_message(update.effective_chat.id, msgs[action], parse_mode="Markdown")
-#
-# app = Application.builder().token(BOT_TOKEN).build()
-# app.add_handler(CommandHandler("start", start))
-# app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data))
-# app.run_polling()
