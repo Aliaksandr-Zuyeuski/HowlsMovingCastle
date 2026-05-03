@@ -84,22 +84,13 @@ def handle_update(update):
         if text.startswith("/start") or text.startswith("/list"):
             url = f"{WEBAPP_URL}?chat_id={chat_id}"
 
-            if chat_type == "private":
-                # В личке — кнопка WebApp (открывается прямо в Telegram)
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
-                        "web_app": {"url": url}
-                    }]]
-                }
-            else:
-                # В группе — обычная url-кнопка (web_app не работает в группах)
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
-                        "url": url
-                    }]]
-                }
+            # web_app кнопка работает везде — и в личке, и в группе (бот должен быть админом группы)
+            reply_markup = {
+                "inline_keyboard": [[{
+                    "text": "🛒 Открыть список",
+                    "web_app": {"url": url}
+                }]]
+            }
 
             return make_response(
                 chat_id,
