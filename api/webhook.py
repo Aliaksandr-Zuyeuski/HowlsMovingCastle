@@ -26,15 +26,18 @@ def handle_update(update):
     chat_id = msg["chat"]["id"]
     text    = msg.get("text", "")
 
+    # Обработка данных из WebApp
     if "web_app_data" in msg:
         try:
             payload = json.loads(msg["web_app_data"]["data"])
         except Exception:
             return None
+
         actor  = msg.get("from", {}).get("first_name", "Участник")
         action = payload.get("action", "")
         name   = payload.get("name", "")
         amount = payload.get("amount", "")
+
         notifications = {
             "add":     f"🔔 *{actor}* dodał/a: *{name}*",
             "take":    f"🙋 *{actor}* bierze: *{name}*",
@@ -42,34 +45,23 @@ def handle_update(update):
             "delete":  f"🗑 *{actor}* usunął/a: *{name}*",
             "expense": f"💰 *{actor}* dodał/a wydatek: *{amount} zł* — {name}",
         }
+
         msg_text = notifications.get(action)
         if msg_text:
             return make_response(chat_id, msg_text)
         return None
 
+    # Команды /start и /list
     if text.startswith("/start") or text.startswith("/list"):
         url = f"{WEBAPP_URL}?chat_id={chat_id}"
-        chat_type = msg["chat"].get("type", "private")
 
-        if chat_type == "private":
-            # В личке — inline кнопка
-            reply_markup = {
-                "inline_keyboard": [[{
-                    "text": "🛒 Открыть список",
-                    "web_app": {"url": url}
-                }]]
-            }
-        else:
-            # В группе — reply keyboard (кнопка внизу чата)
-            reply_markup = {
-          #      "keyboard": [[{
-                 "inline_keyboard": [[{
-                    "text": "🛒 Открыть список",
-                    "web_app": {"url": url}
-                }]],
-                "resize_keyboard": True,
-                "one_time_keyboard": False
-            }
+        # ✅ ОДИН универсальный вариант (работает и в группе, и в личке)
+        reply_markup = {
+            "inline_keyboard": [[{
+                "text": "🛒 Открыть список",
+                "web_app": {"url": url}
+            }]]
+        }
 
         return make_response(
             chat_id,
@@ -85,6 +77,7 @@ class handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body   = self.rfile.read(length)
         response_body = b"{}"
+
         try:
             update = json.loads(body)
             print(f"Update: {json.dumps(update)[:300]}")
