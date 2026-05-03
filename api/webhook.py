@@ -62,7 +62,8 @@ def handle_update(update):
         else:
             # В группе — reply keyboard (кнопка внизу чата)
             reply_markup = {
-                "keyboard": [[{
+          #      "keyboard": [[{
+                 "inline_keyboard": [[{
                     "text": "🛒 Открыть список",
                     "web_app": {"url": url}
                 }]],
