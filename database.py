@@ -38,6 +38,15 @@ def init_db():
                     description TEXT,
                     created_at TIMESTAMP DEFAULT NOW()
                 );
+
+                CREATE TABLE IF NOT EXISTS settings (
+                    chat_id BIGINT PRIMARY KEY,
+                    notif_add BOOLEAN DEFAULT TRUE,
+                    notif_take BOOLEAN DEFAULT TRUE,
+                    notif_bought BOOLEAN DEFAULT TRUE,
+                    notif_delete BOOLEAN DEFAULT TRUE,
+                    notif_expense BOOLEAN DEFAULT TRUE
+                );
             """)
         conn.commit()
 
@@ -154,3 +163,48 @@ def get_balance(chat_id: int):
     total_sum = sum(totals.values())
     share = total_sum / len(totals) if totals else 0
     return totals, share
+
+
+# ── Настройки уведомлений ─────────────────────────────────────────
+
+def get_settings(chat_id: int) -> dict:
+    """Получить настройки уведомлений для чата. Если нет — вернуть дефолтные."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM settings WHERE chat_id=%s", (chat_id,))
+            row = cur.fetchone()
+    if row:
+        return dict(row)
+    # Дефолт — все уведомления включены
+    return {
+        "chat_id": chat_id,
+        "notif_add": True,
+        "notif_take": True,
+        "notif_bought": True,
+        "notif_delete": True,
+        "notif_expense": True,
+    }
+
+
+def save_settings(chat_id: int, settings: dict):
+    """Сохранить настройки уведомлений (upsert)."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO settings (chat_id, notif_add, notif_take, notif_bought, notif_delete, notif_expense)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (chat_id) DO UPDATE SET
+                    notif_add     = EXCLUDED.notif_add,
+                    notif_take    = EXCLUDED.notif_take,
+                    notif_bought  = EXCLUDED.notif_bought,
+                    notif_delete  = EXCLUDED.notif_delete,
+                    notif_expense = EXCLUDED.notif_expense
+            """, (
+                chat_id,
+                settings.get("notif_add", True),
+                settings.get("notif_take", True),
+                settings.get("notif_bought", True),
+                settings.get("notif_delete", True),
+                settings.get("notif_expense", True),
+            ))
+        conn.commit()
