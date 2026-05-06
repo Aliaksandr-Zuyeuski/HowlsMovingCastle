@@ -75,8 +75,9 @@ class handler(BaseHTTPRequestHandler):
             method="POST"
         )
         try:
-            urllib.request.urlopen(req)
-            self._json({"ok": True})
+            with urllib.request.urlopen(req) as resp:
+                result = json.loads(resp.read())
+                self._json({"ok": result.get("ok", False)})
         except Exception as e:
             print(f"notify error: {e}")
             self._json({"ok": False, "error": str(e)})
