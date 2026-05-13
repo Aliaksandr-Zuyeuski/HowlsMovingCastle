@@ -458,6 +458,7 @@ async function saveSetting(key, value){
   s[key] = value;
   await api(`/api/settings?chat_id=${CHAT_ID}`, 'POST', s);
   toast(value ? '🔔 Włączone' : '🔕 Wyłączone');
+  
 }
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
