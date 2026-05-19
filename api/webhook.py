@@ -24,8 +24,6 @@ def send_message(chat_id, text, reply_markup=None):
     )
     try:
         urllib.request.urlopen(req)
-   # except Exception as e:
-    #    print(f"send_message error: {e}")
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"send_message error: {e} — {body}")
@@ -90,31 +88,28 @@ def handle_update(update):
             user_id = msg.get("from", {}).get("id", 0)
 
             if chat_type == "private":
-                # В личке — передаём только user_id (group_chat_id выберет сам пользователь или не нужен)
                 url = f"{WEBAPP_URL}?user_id={user_id}"
-            else:
-                # В группе — передаём и group_chat_id, и user_id прямо в URL
-                url = f"{WEBAPP_URL}?group_chat_id={chat_id}&user_id={user_id}"
-
-            # web_app кнопка работает и в личке, и в группах (Bot API 6.0+)
-            # Открывает мини-приложение во встроенном браузере Telegram
-            reply_markup = {
-                "inline_keyboard": [[{
-                    "text": "🛒 Открыть список",
-                    "web_app": {"url": url}
-                }]]
-            }
-
-            if chat_type == "private":
+                reply_markup = {
+                    "inline_keyboard": [[{
+                        "text": "🛒 Открыть список",
+                        "web_app": {"url": url}
+                    }]]
+                }
                 return make_response(
                     chat_id,
                     "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
                     reply_markup=reply_markup
                 )
             else:
-                # В группе нельзя отвечать через webhook response напрямую на команды
-                # (make_response работает только для личных чатов в некоторых сценариях),
-                # поэтому используем send_message для группы
+                # В группе используем ссылку t.me/bot?startapp=gCHATID
+                # Открывает мини-приложение во встроенном браузере Telegram
+                start_param = "g" + str(chat_id).lstrip("-")
+                reply_markup = {
+                    "inline_keyboard": [[{
+                        "text": "🛒 Открыть список",
+                        "url": f"https://t.me/Howls_MovingCastle_test_bot?startapp={start_param}"
+                    }]]
+                }
                 send_message(
                     chat_id,
                     "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",

@@ -895,9 +895,12 @@
 		// user_id: из Telegram WebApp (надёжнее) или из URL-параметра (запасной вариант)
 		const USER_ID = tg?.initDataUnsafe?.user?.id || params.get('user_id') || '0';
 
-		// ID группы: из URL-параметра, который бот передал при открытии в группе
-		// Если открыто из лички — group_chat_id будет null
-		const GROUP_CHAT_ID = params.get('group_chat_id') || null;
+		// ID группы: из startapp параметра (когда открыто через t.me/bot?startapp=gXXX)
+		// или из URL-параметра (запасной вариант)
+		const startParam = tg?.initDataUnsafe?.start_param || '';
+		const GROUP_CHAT_ID = startParam.startsWith('g')
+			? '-' + startParam.slice(1)
+			: params.get('group_chat_id') || null;
 
 		// CHAT_ID для хранения данных списка — используем группу если есть, иначе user_id
 		const CHAT_ID = GROUP_CHAT_ID || USER_ID;
