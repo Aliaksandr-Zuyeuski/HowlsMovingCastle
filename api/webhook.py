@@ -82,30 +82,40 @@ def handle_update(update):
 
         # Команды /start и /list
         if text.startswith("/start") or text.startswith("/list"):
-            url = f"{WEBAPP_URL}?chat_id={chat_id}"
+            user_id = msg.get("from", {}).get("id", 0)
 
             if chat_type == "private":
-                # В личке — кнопка WebApp (открывается прямо в Telegram)
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
-                        "web_app": {"url": url}
-                    }]]
-                }
+                # В личке — передаём только user_id (group_chat_id выберет сам пользователь или не нужен)
+                url = f"{WEBAPP_URL}?user_id={user_id}"
             else:
-                # В группе — обычная url-кнопка
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
-                        "url": url
-                    }]]
-                }
+                # В группе — передаём и group_chat_id, и user_id прямо в URL
+                url = f"{WEBAPP_URL}?group_chat_id={chat_id}&user_id={user_id}"
 
-            return make_response(
-                chat_id,
-                "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
-                reply_markup=reply_markup
-            )
+            # web_app кнопка работает и в личке, и в группах (Bot API 6.0+)
+            # Открывает мини-приложение во встроенном браузере Telegram
+            reply_markup = {
+                "inline_keyboard": [[{
+                    "text": "🛒 Открыть список",
+                    "web_app": {"url": url}
+                }]]
+            }
+
+            if chat_type == "private":
+                return make_response(
+                    chat_id,
+                    "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
+                    reply_markup=reply_markup
+                )
+            else:
+                # В группе нельзя отвечать через webhook response напрямую на команды
+                # (make_response работает только для личных чатов в некоторых сценариях),
+                # поэтому используем send_message для группы
+                send_message(
+                    chat_id,
+                    "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
+                    reply_markup=reply_markup
+                )
+                return None
 
     # ── 2. Inline-запрос (если понадобится в будущем) ─────────────────────────
     # if "inline_query" in update:

@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import database as db
+from auth import verify_init_data, AuthError
 
 
 class handler(BaseHTTPRequestHandler):
@@ -30,11 +31,21 @@ class handler(BaseHTTPRequestHandler):
         self._json({})
 
     def do_GET(self):
+        try:
+            verify_init_data(self.headers.get("X-Init-Data", ""))
+        except AuthError as e:
+            self._json({"ok": False, "error": str(e)}, status=401)
+            return
         qs = parse_qs(urlparse(self.path).query)
         chat_id = int(qs.get("chat_id", [0])[0])
         self._json(db.get_settings(chat_id))
 
     def do_POST(self):
+        try:
+            verify_init_data(self.headers.get("X-Init-Data", ""))
+        except AuthError as e:
+            self._json({"ok": False, "error": str(e)}, status=401)
+            return
         qs = parse_qs(urlparse(self.path).query)
         chat_id = int(qs.get("chat_id", [0])[0])
         data = self._body()

@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from http.server import BaseHTTPRequestHandler
 import database as db
+from auth import verify_init_data, AuthError
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
@@ -31,6 +32,12 @@ class handler(BaseHTTPRequestHandler):
         self._json({})
 
     def do_POST(self):
+        try:
+            verify_init_data(self.headers.get("X-Init-Data", ""))
+        except AuthError as e:
+            self._json({"ok": False, "error": str(e)}, status=401)
+            return
+
         data = self._body()
 
         chat_id = data.get("chat_id")
