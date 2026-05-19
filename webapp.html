@@ -279,38 +279,10 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
+const ME = tg?.initDataUnsafe?.user?.first_name || 'Ty';
 const params = new URLSearchParams(window.location.search);
-
-// Имя пользователя: сначала из Telegram WebApp (работает т.к. открыто как web_app),
-// иначе fallback
-const ME = tg?.initDataUnsafe?.user?.first_name || 'Участник';
-
-// user_id: из Telegram WebApp (надёжнее) или из URL-параметра (запасной вариант)
-const USER_ID = tg?.initDataUnsafe?.user?.id || params.get('user_id') || '0';
-
-// ID группы: из startapp параметра (когда открыто через t.me/bot?startapp=gXXX)
-// или из URL-параметра (запасной вариант)
-const startParam = tg?.initDataUnsafe?.start_param || '';
-const GROUP_CHAT_ID = startParam.startsWith('g')
-    ? '-' + startParam.slice(1)
-    : params.get('group_chat_id') || null;
-
-// CHAT_ID для хранения данных списка — используем группу если есть, иначе user_id
-const CHAT_ID = GROUP_CHAT_ID || USER_ID;
-
+const CHAT_ID = params.get('chat_id') || '0';
 const API = window.location.origin;
-
-// Отладка (можно убрать после проверки)
-console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID,
-  tgUser: tg?.initDataUnsafe?.user });
-
-// Временный debug — показывает параметры прямо на экране
-setTimeout(()=>{
-  const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#fff;font-size:11px;padding:8px;z-index:9999;word-break:break-all';
-  d.textContent = `start_param: ${tg?.initDataUnsafe?.start_param || 'null'} | GROUP: ${GROUP_CHAT_ID} | USER: ${USER_ID} | CHAT: ${CHAT_ID}`;
-  document.body.appendChild(d);
-}, 500);
 
 let items = [], expenses = [], filter = 'all';
 
@@ -323,17 +295,8 @@ const EM = {
 };
 function em(n){ const l=n.toLowerCase(); for(const[k,v] of Object.entries(EM)) if(l.includes(k)) return v; return '🛒'; }
 
-// initData для верификации на сервере (подписана Telegram, не подделать)
-const INIT_DATA = tg?.initData || '';
-
 async function api(path, method='GET', body=null) {
-  const opts = {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Init-Data': INIT_DATA   // бэкенд проверяет HMAC подпись
-    }
-  };
+  const opts = { method, headers:{'Content-Type':'application/json'} };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + path, opts);
   return r.json();
@@ -343,13 +306,7 @@ function notify(action, name, amount='') {
   fetch(`${API}/api/notify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action, name, amount,
-      user: ME,
-      user_id: USER_ID,
-      chat_id: CHAT_ID,          // ID группы (или лички) для уведомлений
-      group_chat_id: GROUP_CHAT_ID  // явно передаём group_chat_id для бэкенда
-    })
+    body: JSON.stringify({ action, name, amount, user: ME, chat_id: CHAT_ID })
   }).catch(e => console.log('notify error:', e));
 }
 
@@ -379,111 +336,48 @@ function renderList() {
   const done=items.filter(i=>i.done).length;
   document.getElementById('pill-a').textContent=active;
   document.getElementById('pill-d').textContent=done+' ✅';
-  el.textContent='';
   if(!list.length){
     const m={all:['🛒','Lista jest pusta','Dodaj pierwszy produkt'],
       free:['✅','Wszystko wzięte!','Nie ma wolnych'],
       mine:['🙋','Nic nie masz','Kliknij Biorę'],
       done:['🎉','Nic nie kupiono','Oznaczaj Kupiłem']};
     const[ic,t,s]=m[filter];
-    const empty=document.createElement('div'); empty.className='empty';
-    const ei=document.createElement('div'); ei.className='ei'; ei.textContent=ic;
-    const h3=document.createElement('h3'); h3.textContent=t;
-    const p=document.createElement('p'); p.textContent=s;
-    empty.append(ei,h3,p); el.appendChild(empty);
+    el.innerHTML=`<div class="empty"><div class="ei">${ic}</div><h3>${t}</h3><p>${s}</p></div>`;
     return;
   }
   const free=list.filter(i=>!i.taken_by&&!i.done);
   const taken=list.filter(i=>i.taken_by&&!i.done);
   const doneI=list.filter(i=>i.done);
-  function addLabel(txt){ const d=document.createElement('div'); d.className='sec-label'; d.textContent=txt; el.appendChild(d); }
-  if(free.length&&filter==='all') addLabel('Do kupienia');
-  free.forEach(it=>el.appendChild(createCard(it)));
-  if(taken.length&&filter==='all') addLabel('Ktoś bierze');
-  taken.forEach(it=>el.appendChild(createCard(it)));
-  if(doneI.length&&filter==='all') addLabel('Kupione');
-  doneI.forEach(it=>el.appendChild(createCard(it)));
+  let html='';
+  if(free.length&&filter==='all') html+='<div class="sec-label">Do kupienia</div>';
+  free.forEach(it=>html+=cardHTML(it));
+  if(taken.length&&filter==='all') html+='<div class="sec-label">Ktoś bierze</div>';
+  taken.forEach(it=>html+=cardHTML(it));
+  if(doneI.length&&filter==='all') html+='<div class="sec-label">Kupione</div>';
+  doneI.forEach(it=>html+=cardHTML(it));
+  el.innerHTML=html;
 }
 
-function makeBtn(cls, text, handler){
-  const b=document.createElement('button');
-  b.className='act '+cls; b.textContent=text;
-  b.addEventListener('click', handler);
-  return b;
-}
-
-function createCard(it){
-  const card=document.createElement('div');
-  card.className='card'+(it.done?' done-card':'');
-  card.id='c'+it.id;
-
-  // main row
-  const main=document.createElement('div'); main.className='card-main';
-
-  const icon=document.createElement('div'); icon.className='card-icon'; icon.textContent=em(it.name);
-
-  const info=document.createElement('div'); info.className='card-info';
-  const nameEl=document.createElement('div'); nameEl.className='card-name'; nameEl.textContent=it.name;
-  info.appendChild(nameEl);
-
-  // sub label
-  const sub=document.createElement('div');
+function cardHTML(it){
+  const ic=em(it.name);
+  let sub='',acts='';
   if(it.done){
-    sub.className='card-sub done-s'; sub.textContent='✅ kupił/a '+(it.taken_by||'');
+    sub=`<div class="card-sub done-s">✅ kupił/a ${it.taken_by}</div>`;
   } else if(it.taken_by){
-    sub.className='card-sub taken'; sub.textContent='🙋 bierze '+(it.taken_by||'');
-  } else {
-    sub.className='card-sub'; sub.textContent='dodał/a '+(it.added_by||'');
-  }
-  info.appendChild(sub);
-
-  const delBtn=document.createElement('button');
-  delBtn.className='card-del'; delBtn.textContent='✕';
-  delBtn.addEventListener('click',()=>delIt(it.id));
-
-  main.append(icon, info, delBtn);
-  card.appendChild(main);
-
-  // action buttons
-  if(!it.done){
-    const acts=document.createElement('div'); acts.className='card-acts';
-    if(it.taken_by){
-      acts.appendChild(makeBtn('bought','✅ Kupiłem'+(it.taken_by===ME?'!':''),()=>buyIt(it.id)));
-      if(it.taken_by===ME) acts.appendChild(makeBtn('rel','Cofnij',()=>releaseIt(it.id)));
+    sub=`<div class="card-sub taken">🙋 bierze ${it.taken_by}</div>`;
+    if(it.taken_by===ME){
+      acts=`<div class="card-acts"><button class="act bought" onclick="buyIt(${it.id})">✅ Kupiłem!</button><button class="act rel" onclick="releaseIt(${it.id})">Cofnij</button></div>`;
     } else {
-      acts.appendChild(makeBtn('take','🙋 Biorę',()=>takeIt(it.id)));
-      acts.appendChild(makeBtn('bought','✅ Już kupiłem',()=>buyIt(it.id)));
+      acts=`<div class="card-acts"><button class="act bought" onclick="buyIt(${it.id})">✅ Kupiłem</button></div>`;
     }
-    card.appendChild(acts);
+  } else {
+    sub=`<div class="card-sub">dodał/a ${it.added_by}</div>`;
+    acts=`<div class="card-acts"><button class="act take" onclick="takeIt(${it.id})">🙋 Biorę</button><button class="act bought" onclick="buyIt(${it.id})">✅ Już kupiłem</button></div>`;
   }
-
-  return card;
-}
-
-function renderExpenses(){
-  const el=document.getElementById('exp-list');
-  el.textContent='';
-  if(!expenses.length){
-    const empty=document.createElement('div'); empty.className='empty';
-    const ei=document.createElement('div'); ei.className='ei'; ei.textContent='💸';
-    const h3=document.createElement('h3'); h3.textContent='Brak wydatków';
-    const p=document.createElement('p'); p.textContent='Dodaj pierwszy wydatek';
-    empty.append(ei,h3,p); el.appendChild(empty);
-    return;
-  }
-  expenses.forEach(e=>{
-    const card=document.createElement('div'); card.className='exp-card';
-    const top=document.createElement('div'); top.className='exp-top';
-    const who=document.createElement('span'); who.className='exp-who'; who.textContent=e.paid_by||'';
-    const amt=document.createElement('span'); amt.className='exp-amt'; amt.textContent=parseFloat(e.amount).toFixed(2)+' zł';
-    top.append(who,amt);
-    const desc=document.createElement('div'); desc.className='exp-desc'; desc.textContent=e.description||'—';
-    const date=document.createElement('div');
-    date.style.cssText='font-size:10.5px;color:var(--hint);margin-top:3px;font-weight:600';
-    date.textContent=e.created_at||'';
-    card.append(top,desc,date);
-    el.appendChild(card);
-  });
+  return`<div class="card ${it.done?'done-card':''}" id="c${it.id}">
+    <div class="card-main"><div class="card-icon">${ic}</div>
+    <div class="card-info"><div class="card-name">${it.name}</div>${sub}</div>
+    <button class="card-del" onclick="delIt(${it.id})">✕</button></div>${acts}</div>`;
 }
 
 async function addItem(){
@@ -502,6 +396,15 @@ document.getElementById('add-inp').addEventListener('keydown',e=>{if(e.key==='En
 async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
   renderExpenses();
+}
+function renderExpenses(){
+  const el=document.getElementById('exp-list');
+  if(!expenses.length){ el.innerHTML='<div class="empty"><div class="ei">💸</div><h3>Brak wydatków</h3><p>Dodaj pierwszy wydatek</p></div>'; return; }
+  el.innerHTML=expenses.map(e=>`<div class="exp-card">
+    <div class="exp-top"><span class="exp-who">${e.paid_by}</span><span class="exp-amt">${parseFloat(e.amount).toFixed(2)} zł</span></div>
+    <div class="exp-desc">${e.description||'—'}</div>
+    <div style="font-size:10.5px;color:var(--hint);margin-top:3px;font-weight:600">${e.created_at||''}</div>
+  </div>`).join('');
 }
 async function addExpense(){
   const amt=parseFloat(document.getElementById('exp-amt').value);
@@ -522,39 +425,22 @@ async function loadBalance(){
   document.getElementById('bal-ttl').textContent=total.toFixed(2)+' zł';
   document.getElementById('bal-share').textContent='na osobę: '+share.toFixed(2)+' zł';
   const el=document.getElementById('bal-cards');
-  el.textContent='';
-  if(!Object.keys(totals).length){
-    const empty=document.createElement('div'); empty.className='empty';
-    const ei=document.createElement('div'); ei.className='ei'; ei.textContent='⚖️';
-    const h3=document.createElement('h3'); h3.textContent='Brak danych';
-    empty.append(ei,h3); el.appendChild(empty);
-    return;
-  }
+  if(!Object.keys(totals).length){ el.innerHTML='<div class="empty"><div class="ei">⚖️</div><h3>Brak danych</h3></div>'; return; }
   const maxP=Math.max(...Object.values(totals));
   const COLS=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
   let ci=0;
-  Object.entries(totals).forEach(([name,paid])=>{
+  el.innerHTML=Object.entries(totals).map(([name,paid])=>{
     const diff=paid-share;
     let st,cls;
     if(diff>0.5){st=`+${diff.toFixed(2)} zł — zwrócą`;cls='credit';}
     else if(diff<-0.5){st=`${diff.toFixed(2)} zł — dopłaci`;cls='owe';}
     else{st='w balansie ✓';cls='ok';}
     const pct=Math.round(paid/maxP*100);
-    const col=COLS[ci++%COLS.length];
-
-    const card=document.createElement('div'); card.className='bal-card';
-    const nameEl=document.createElement('div'); nameEl.className='bal-name'; nameEl.textContent=name;
-    const bar=document.createElement('div'); bar.className='bal-bar';
-    const fill=document.createElement('div'); fill.className='bal-fill';
-    fill.style.width=pct+'%'; fill.style.background=col;
-    bar.appendChild(fill);
-    const row=document.createElement('div'); row.className='bal-row';
-    const paidEl=document.createElement('span'); paidEl.className='bal-paid'; paidEl.textContent=`zapłacił/a ${paid.toFixed(2)} zł`;
-    const stEl=document.createElement('span'); stEl.className=`bal-st ${cls}`; stEl.textContent=st;
-    row.append(paidEl,stEl);
-    card.append(nameEl,bar,row);
-    el.appendChild(card);
-  });
+    return`<div class="bal-card"><div class="bal-name">${name}</div>
+      <div class="bal-bar"><div class="bal-fill" style="width:${pct}%;background:${COLS[ci++%COLS.length]}"></div></div>
+      <div class="bal-row"><span class="bal-paid">zapłacił/a ${paid.toFixed(2)} zł</span>
+      <span class="bal-st ${cls}">${st}</span></div></div>`;
+  }).join('');
 }
 
 async function loadSettings(){
