@@ -24,6 +24,11 @@ def send_message(chat_id, text, reply_markup=None):
     )
     try:
         urllib.request.urlopen(req)
+   # except Exception as e:
+    #    print(f"send_message error: {e}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"send_message error: {e} — {body}")
     except Exception as e:
         print(f"send_message error: {e}")
 
