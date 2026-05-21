@@ -23,7 +23,8 @@ def send_message(chat_id, text, reply_markup=None):
         method="POST"
     )
     try:
-        urllib.request.urlopen(req)
+        resp = urllib.request.urlopen(req)
+        print(f"send_message success: {resp.read().decode()}")
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"send_message error: {e} — {body}")
