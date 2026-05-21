@@ -119,7 +119,7 @@ def handle_update(update):
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Открыть список",
-                        "url": f"https://t.me/Howls_MovingCastle_test_bot?startapp={start_param}"
+                        "url": f"https://t.me/Howls_MovingCastle_test_bot/test?startapp={start_param}"
                     }]]
                 }
                 send_message(
