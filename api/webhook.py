@@ -88,8 +88,19 @@ def handle_update(update):
         if text.startswith("/start") or text.startswith("/list"):
             user_id = msg.get("from", {}).get("id", 0)
 
+            # Проверяем есть ли startapp параметр (когда пришли из группы)
+            # /start g1003882464016 → group_chat_id = -1003882464016
+            parts = text.split(" ", 1)
+            start_param_val = parts[1].strip() if len(parts) > 1 else ""
+            group_chat_id_from_param = None
+            if start_param_val.startswith("g"):
+                group_chat_id_from_param = "-" + start_param_val[1:]
+
             if chat_type == "private":
-                url = f"{WEBAPP_URL}?user_id={user_id}"
+                if group_chat_id_from_param:
+                    url = f"{WEBAPP_URL}?group_chat_id={group_chat_id_from_param}&user_id={user_id}"
+                else:
+                    url = f"{WEBAPP_URL}?user_id={user_id}"
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Открыть список",
