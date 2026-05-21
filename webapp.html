@@ -308,7 +308,7 @@ console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID,
 setTimeout(()=>{
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#fff;font-size:11px;padding:8px;z-index:9999;word-break:break-all';
-  d.textContent = `start_param: ${tg?.initDataUnsafe?.start_param || 'null'} | GROUP: ${GROUP_CHAT_ID} | USER: ${USER_ID} | CHAT: ${CHAT_ID}`;
+  d.textContent = `start_param: ${tg?.initDataUnsafe?.start_param || 'null'} | GROUP: ${GROUP_CHAT_ID} | USER: ${USER_ID} | CHAT: ${CHAT_ID} | initData: ${INIT_DATA ? INIT_DATA.slice(0,30)+'...' : 'EMPTY'}`;
   document.body.appendChild(d);
 }, 500);
 
