@@ -67,4 +67,3 @@ https://ВАШ_ПРОЕКТ.vercel.app/api/webhook
 - `DATABASE_URL` — любой PostgreSQL
 - `WEBAPP_URL` — новый адрес
 - Для polling вместо webhook: раскомментировать код в api/webhook.py
-
