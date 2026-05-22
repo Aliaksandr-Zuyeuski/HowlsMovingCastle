@@ -303,8 +303,6 @@ async function api(path, method='GET', body=null) {
 }
 
 function notify(action, name, amount='') {
-  // Уведомления отправляем только в группы (chat_id отрицательный)
-  if (parseInt(CHAT_ID) >= 0) return;
   fetch(`${API}/api/notify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
