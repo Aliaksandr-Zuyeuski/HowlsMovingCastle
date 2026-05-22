@@ -46,6 +46,8 @@ def verify_init_data(init_data: str) -> dict:
     ).hexdigest()
 
     if not hmac.compare_digest(expected_hash, received_hash):
+        print(f"auth failed: expected={expected_hash[:20]}... received={received_hash[:20]}...")
+        print(f"data_check_string: {data_check_string[:100]}")
         raise AuthError("Подпись initData неверна")
 
     user_str = parsed.get("user")
