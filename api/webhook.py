@@ -23,11 +23,7 @@ def send_message(chat_id, text, reply_markup=None):
         method="POST"
     )
     try:
-        resp = urllib.request.urlopen(req)
-        print(f"send_message success: {resp.read().decode()}")
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"send_message error: {e} — {body}")
+        urllib.request.urlopen(req)
     except Exception as e:
         print(f"send_message error: {e}")
 
@@ -86,48 +82,52 @@ def handle_update(update):
 
         # Команды /start и /list
         if text.startswith("/start") or text.startswith("/list"):
-            user_id = msg.get("from", {}).get("id", 0)
-
-            # Проверяем есть ли startapp параметр (когда пришли из группы)
-            # /start g1003882464016 → group_chat_id = -1003882464016
-            parts = text.split(" ", 1)
-            start_param_val = parts[1].strip() if len(parts) > 1 else ""
-            group_chat_id_from_param = None
-            if start_param_val.startswith("g"):
-                group_chat_id_from_param = "-" + start_param_val[1:]
-
             if chat_type == "private":
-                if group_chat_id_from_param:
-                    url = f"{WEBAPP_URL}?group_chat_id={group_chat_id_from_param}&user_id={user_id}"
+                # В личке — WebApp. Если пришли через deep link (/start group_-100xxx),
+                # передаём group_chat_id чтобы уведомления шли в группу
+                parts = text.split(maxsplit=1)
+                param = parts[1] if len(parts) > 1 else ""
+                if param.startswith("group_"):
+                    try:
+                        group_chat_id = int(param[len("group_"):])
+                        url = f"{WEBAPP_URL}?chat_id={group_chat_id}"
+                    except ValueError:
+                        url = f"{WEBAPP_URL}?chat_id={chat_id}"
                 else:
-                    url = f"{WEBAPP_URL}?user_id={user_id}"
+                    url = f"{WEBAPP_URL}?chat_id={chat_id}"
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Открыть список",
                         "web_app": {"url": url}
                     }]]
                 }
-                return make_response(
-                    chat_id,
-                    "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
-                    reply_markup=reply_markup
-                )
             else:
-                # В группе используем ссылку t.me/bot?startapp=gCHATID
-                # Открывает мини-приложение во встроенном браузере Telegram
-                start_param = "g" + str(chat_id).lstrip("-")
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
-                        "url": f"https://t.me/Howls_MovingCastle_test_bot/test?startapp={start_param}"
-                    }]]
-                }
-                send_message(
-                    chat_id,
-                    "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
-                    reply_markup=reply_markup
-                )
-                return None
+                # В группе — url-кнопка с deep link на личку бота,
+                # передаём group_chat_id через /start параметр
+                bot_username = os.getenv("BOT_USERNAME", "")
+                if bot_username:
+                    url = f"https://t.me/{bot_username}?start=group_{chat_id}"
+                    reply_markup = {
+                        "inline_keyboard": [[{
+                            "text": "🛒 Открыть список",
+                            "url": url
+                        }]]
+                    }
+                else:
+                    # Fallback — прямая ссылка на webapp с chat_id группы
+                    url = f"{WEBAPP_URL}?chat_id={chat_id}"
+                    reply_markup = {
+                        "inline_keyboard": [[{
+                            "text": "🛒 Открыть список",
+                            "url": url
+                        }]]
+                    }
+
+            return make_response(
+                chat_id,
+                "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
+                reply_markup=reply_markup
+            )
 
     # ── 2. Inline-запрос (если понадобится в будущем) ─────────────────────────
     # if "inline_query" in update:
