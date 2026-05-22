@@ -93,7 +93,7 @@ def handle_update(update):
                     }]]
                 }
             else:
-                # В группе — обычная url-кнопка с chat_id группы
+                # В группе — обычная url-кнопка
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Открыть список",
@@ -106,6 +106,10 @@ def handle_update(update):
                 "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
                 reply_markup=reply_markup
             )
+
+    # ── 2. Inline-запрос (если понадобится в будущем) ─────────────────────────
+    # if "inline_query" in update:
+    #     pass
 
     return None
 
