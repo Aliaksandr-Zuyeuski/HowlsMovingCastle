@@ -82,19 +82,10 @@ def handle_update(update):
 
         # Команды /start и /list
         if text.startswith("/start") or text.startswith("/list"):
+            url = f"{WEBAPP_URL}?chat_id={chat_id}"
+
             if chat_type == "private":
-                # В личке — WebApp. Если пришли через deep link (/start group_-100xxx),
-                # передаём group_chat_id чтобы уведомления шли в группу
-                parts = text.split(maxsplit=1)
-                param = parts[1] if len(parts) > 1 else ""
-                if param.startswith("group_"):
-                    try:
-                        group_chat_id = int(param[len("group_"):])
-                        url = f"{WEBAPP_URL}?chat_id={group_chat_id}"
-                    except ValueError:
-                        url = f"{WEBAPP_URL}?chat_id={chat_id}"
-                else:
-                    url = f"{WEBAPP_URL}?chat_id={chat_id}"
+                # В личке — кнопка WebApp (открывается прямо в Telegram)
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Открыть список",
@@ -102,36 +93,19 @@ def handle_update(update):
                     }]]
                 }
             else:
-                # В группе — url-кнопка с deep link на личку бота,
-                # передаём group_chat_id через /start параметр
-                bot_username = os.getenv("BOT_USERNAME", "")
-                if bot_username:
-                    url = f"https://t.me/{bot_username}?start=group_{chat_id}"
-                    reply_markup = {
-                        "inline_keyboard": [[{
-                            "text": "🛒 Открыть список",
-                            "url": url
-                        }]]
-                    }
-                else:
-                    # Fallback — прямая ссылка на webapp с chat_id группы
-                    url = f"{WEBAPP_URL}?chat_id={chat_id}"
-                    reply_markup = {
-                        "inline_keyboard": [[{
-                            "text": "🛒 Открыть список",
-                            "url": url
-                        }]]
-                    }
+                # В группе — обычная url-кнопка с chat_id группы
+                reply_markup = {
+                    "inline_keyboard": [[{
+                        "text": "🛒 Открыть список",
+                        "url": url
+                    }]]
+                }
 
             return make_response(
                 chat_id,
                 "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
                 reply_markup=reply_markup
             )
-
-    # ── 2. Inline-запрос (если понадобится в будущем) ─────────────────────────
-    # if "inline_query" in update:
-    #     pass
 
     return None
 
