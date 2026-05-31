@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from http.server import BaseHTTPRequestHandler
 import database as db
+from auth import verify_init_data, AuthError
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
@@ -31,13 +32,19 @@ class handler(BaseHTTPRequestHandler):
         self._json({})
 
     def do_POST(self):
+        try:
+            verify_init_data(self.headers.get("X-Init-Data", ""))
+        except AuthError as e:
+            self._json({"ok": False, "error": str(e)}, status=401)
+            return
+
         data = self._body()
 
         chat_id = data.get("chat_id")
         action  = data.get("action", "")
         name    = data.get("name", "")
         amount  = data.get("amount", "")
-        actor   = data.get("user", "Uczestnik")
+        actor   = data.get("user", "Удзельнік")
 
         if not chat_id or not action:
             self._json({"ok": False, "error": "missing fields"})
@@ -49,15 +56,23 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "skipped": True})
             return
 
-        notifications = {
-            "add":     f"🔔 *{actor}* dodał/a: *{name}*",
-            "take":    f"🙋 *{actor}* bierze: *{name}*",
-            "bought":  f"✅ *{actor}* kupił/a: *{name}*",
-            "delete":  f"🗑 *{actor}* usunął/a: *{name}*",
-            "expense": f"💰 *{actor}* dodał/a wydatek: *{amount} zł* — {name}",
-        }
+        # Для добавления — если несколько товаров через запятую, делаем список
+        if action == "add":
+            items = [i.strip() for i in name.split(",") if i.strip()]
+            if len(items) > 1:
+                bullet_list = "\n".join(f"• {i}" for i in items)
+                msg_text = f"🔔 *{actor}* дадаў/ла ў спіс:\n{bullet_list}"
+            else:
+                msg_text = f"🔔 *{actor}* дадаў/ла: *{name}*"
+        else:
+            notifications = {
+                "take":    f"🙋 *{actor}* бярэ: *{name}*",
+                "bought":  f"✅ *{actor}* купіў/ла: *{name}*",
+                "delete":  f"🗑 *{actor}* выдаліў/ла: *{name}*",
+                "expense": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
+            }
+            msg_text = notifications.get(action)
 
-        msg_text = notifications.get(action)
         if not msg_text:
             self._json({"ok": False, "error": "unknown action"})
             return

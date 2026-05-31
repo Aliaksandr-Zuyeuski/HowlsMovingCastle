@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="be">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Koszyk</title>
+<title>Кошык</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -145,62 +145,62 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 <div class="page on" id="page-list">
   <div class="hdr">
     <div class="hdr-row">
-      <div class="hdr-title">🛒 Koszyk</div>
+      <div class="hdr-title">🛒 Кошык</div>
       <div class="pills">
         <div class="pill blue" id="pill-a">—</div>
         <div class="pill green" id="pill-d">— ✅</div>
       </div>
     </div>
     <div class="add-row">
-      <input class="add-inp" id="add-inp" placeholder="Dodaj produkt..." maxlength="80"/>
+      <input class="add-inp" id="add-inp" placeholder="Дадаць тавар..." maxlength="80"/>
       <button class="add-btn" onclick="addItem()">+</button>
     </div>
   </div>
   <div class="ftabs">
-    <button class="ftab on" onclick="setF('all',this)">Wszystkie</button>
-    <button class="ftab" onclick="setF('free',this)">Wolne</button>
-    <button class="ftab" onclick="setF('mine',this)">Moje 🙋</button>
-    <button class="ftab" onclick="setF('done',this)">Kupione ✅</button>
+    <button class="ftab on" onclick="setF('all',this)">Усе</button>
+    <button class="ftab" onclick="setF('free',this)">Вольныя</button>
+    <button class="ftab" onclick="setF('mine',this)">Мае 🙋</button>
+    <button class="ftab" onclick="setF('done',this)">Куплена ✅</button>
   </div>
-  <div class="list" id="list-el"><div class="spinner">Ładowanie...</div></div>
+  <div class="list" id="list-el"><div class="spinner">Загрузка...</div></div>
 </div>
 
 <div class="page" id="page-expenses">
-  <div class="hdr"><div class="hdr-row"><div class="hdr-title">💰 Wydatki</div></div></div>
+  <div class="hdr"><div class="hdr-row"><div class="hdr-title">💰 Выдаткі</div></div></div>
   <div class="exp-wrap">
     <div class="form-card">
-      <h3>Dodaj wydatek</h3>
-      <div class="flabel">Kwota (zł)</div>
+      <h3>Дадаць выдатак</h3>
+      <div class="flabel">Сума (р)</div>
       <input class="finp" id="exp-amt" type="number" placeholder="0.00" step="0.01"/>
-      <div class="flabel">Opis</div>
-      <input class="finp" id="exp-desc" placeholder="Biedronka, Lidl..."/>
-      <button class="sub-btn" onclick="addExpense()">Dodaj wydatek</button>
+      <div class="flabel">Апісанне</div>
+      <input class="finp" id="exp-desc" placeholder="Крама, рынак..."/>
+      <button class="sub-btn" onclick="addExpense()">Дадаць выдатак</button>
     </div>
     <div class="exp-cards" id="exp-list"></div>
   </div>
 </div>
 
 <div class="page" id="page-balance">
-  <div class="hdr"><div class="hdr-row"><div class="hdr-title">⚖️ Balans</div></div></div>
+  <div class="hdr"><div class="hdr-row"><div class="hdr-title">⚖️ Баланс</div></div></div>
   <div class="bal-wrap">
     <div class="bal-sum">
-      <div class="bal-ttl" id="bal-ttl">0.00 zł</div>
-      <div class="bal-lbl">łączne wydatki</div>
-      <div class="bal-share" id="bal-share">na osobę: 0.00 zł</div>
+      <div class="bal-ttl" id="bal-ttl">0.00 р</div>
+      <div class="bal-lbl">агульныя выдаткі</div>
+      <div class="bal-share" id="bal-share">на чалавека: 0.00 р</div>
     </div>
     <div id="bal-cards"></div>
   </div>
 </div>
 
 <div class="page" id="page-settings">
-  <div class="hdr"><div class="hdr-row"><div class="hdr-title">⚙️ Ustawienia</div></div></div>
+  <div class="hdr"><div class="hdr-row"><div class="hdr-title">⚙️ Налады</div></div></div>
   <div class="set-wrap">
     <div class="set-card">
-      <div class="set-card-title">Powiadomienia do grupy</div>
+      <div class="set-card-title">Апавяшчэнні ў групу</div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">🔔 Dodanie produktu</div>
-          <div class="set-desc">Ktoś dodał nowy produkt do listy</div>
+          <div class="set-name">🔔 Даданне тавару</div>
+          <div class="set-desc">Нехта дадаў новы тавар у спіс</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="notif_add" onchange="saveSetting('notif_add', this.checked)">
@@ -209,8 +209,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">🙋 Wzięcie produktu</div>
-          <div class="set-desc">Ktoś wziął produkt do kupienia</div>
+          <div class="set-name">🙋 Узяцце тавару</div>
+          <div class="set-desc">Нехта ўзяў тавар для пакупкі</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="notif_take" onchange="saveSetting('notif_take', this.checked)">
@@ -219,8 +219,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">✅ Kupienie produktu</div>
-          <div class="set-desc">Ktoś kupił produkt</div>
+          <div class="set-name">✅ Пакупка тавару</div>
+          <div class="set-desc">Нехта купіў тавар</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="notif_bought" onchange="saveSetting('notif_bought', this.checked)">
@@ -229,8 +229,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">🗑 Usunięcie produktu</div>
-          <div class="set-desc">Ktoś usunął produkt z listy</div>
+          <div class="set-name">🗑 Выдаленне тавару</div>
+          <div class="set-desc">Нехта выдаліў тавар са спіса</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="notif_delete" onchange="saveSetting('notif_delete', this.checked)">
@@ -239,8 +239,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">💰 Dodanie wydatku</div>
-          <div class="set-desc">Ktoś dodał nowy wydatek</div>
+          <div class="set-name">💰 Даданне выдатку</div>
+          <div class="set-desc">Нехта дадаў новы выдатак</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="notif_expense" onchange="saveSetting('notif_expense', this.checked)">
@@ -249,17 +249,25 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
     </div>
     <div class="set-card">
-      <div class="set-card-title">Informacje</div>
+      <div class="set-card-title">Інфармацыя</div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">👤 Zalogowany jako</div>
+          <div class="set-name">👤 Увайшлі як</div>
           <div class="set-desc" id="set-me">—</div>
         </div>
       </div>
       <div class="set-row">
         <div class="set-info">
-          <div class="set-name">💬 ID czatu</div>
+          <div class="set-name">💬 ID чата</div>
           <div class="set-desc" id="set-chatid">—</div>
+        </div>
+        <div class="set-info">
+          <div class="set-name">📦 Версія</div>
+          <div class="set-desc" id="set-version">—</div>
+        </div>
+        <div class="set-info">
+          <div class="set-name">🕐 Апошняе абнаўленне</div>
+          <div class="set-desc" id="set-updated">—</div>
         </div>
       </div>
     </div>
@@ -267,10 +275,10 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 </div>
 
 <nav class="nav">
-  <button class="nb on" onclick="goPage('list',this)"><span class="ni">🛒</span><span class="nl">Lista</span></button>
-  <button class="nb" onclick="goPage('expenses',this)"><span class="ni">💰</span><span class="nl">Wydatki</span></button>
-  <button class="nb" onclick="goPage('balance',this)"><span class="ni">⚖️</span><span class="nl">Balans</span></button>
-  <button class="nb" onclick="goPage('settings',this)"><span class="ni">⚙️</span><span class="nl">Ustawienia</span></button>
+  <button class="nb on" onclick="goPage('list',this)"><span class="ni">🛒</span><span class="nl">Спіс</span></button>
+  <button class="nb" onclick="goPage('expenses',this)"><span class="ni">💰</span><span class="nl">Выдаткі</span></button>
+  <button class="nb" onclick="goPage('balance',this)"><span class="ni">⚖️</span><span class="nl">Баланс</span></button>
+  <button class="nb" onclick="goPage('settings',this)"><span class="ni">⚙️</span><span class="nl">Налады</span></button>
 </nav>
 
 <div class="toast" id="toast"></div>
@@ -279,10 +287,40 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-const ME = tg?.initDataUnsafe?.user?.first_name || 'Ty';
 const params = new URLSearchParams(window.location.search);
-const CHAT_ID = params.get('chat_id') || '0';
+
+// Имя пользователя: сначала из Telegram WebApp (работает т.к. открыто как web_app),
+// иначе fallback
+const APP_VERSION = '0.1.0-beta';
+const APP_UPDATED = '30.05.2026 09:44';
+const ME = tg?.initDataUnsafe?.user?.first_name || 'Участник';
+
+// user_id: из Telegram WebApp (надёжнее) или из URL-параметра (запасной вариант)
+const USER_ID = tg?.initDataUnsafe?.user?.id || params.get('user_id') || '0';
+
+// ID группы: из startapp параметра (когда открыто через t.me/bot?startapp=gXXX)
+// или из URL-параметра (запасной вариант)
+const startParam = tg?.initDataUnsafe?.start_param || '';
+const GROUP_CHAT_ID = startParam.startsWith('g')
+    ? '-' + startParam.slice(1)
+    : params.get('group_chat_id') || null;
+
+// CHAT_ID для хранения данных списка — используем группу если есть, иначе user_id
+const CHAT_ID = GROUP_CHAT_ID || USER_ID;
+
 const API = window.location.origin;
+
+// Отладка (можно убрать после проверки)
+console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID,
+  tgUser: tg?.initDataUnsafe?.user });
+
+// // Временный debug — показывает параметры прямо на экране
+// setTimeout(()=>{
+//   const d = document.createElement('div');
+//   d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#fff;font-size:11px;padding:8px;z-index:9999;word-break:break-all';
+//   d.textContent = `start_param: ${tg?.initDataUnsafe?.start_param || 'null'} | GROUP: ${GROUP_CHAT_ID} | USER: ${USER_ID} | CHAT: ${CHAT_ID}`;
+//   document.body.appendChild(d);
+// }, 500);
 
 let items = [], expenses = [], filter = 'all';
 
@@ -295,8 +333,17 @@ const EM = {
 };
 function em(n){ const l=n.toLowerCase(); for(const[k,v] of Object.entries(EM)) if(l.includes(k)) return v; return '🛒'; }
 
+// initData для верификации на сервере (подписана Telegram, не подделать)
+const INIT_DATA = tg?.initData || '';
+
 async function api(path, method='GET', body=null) {
-  const opts = { method, headers:{'Content-Type':'application/json'} };
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Init-Data': INIT_DATA   // бэкенд проверяет HMAC подпись
+    }
+  };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + path, opts);
   return r.json();
@@ -305,8 +352,17 @@ async function api(path, method='GET', body=null) {
 function notify(action, name, amount='') {
   fetch(`${API}/api/notify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, name, amount, user: ME, chat_id: CHAT_ID })
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Init-Data': INIT_DATA
+    },
+    body: JSON.stringify({
+      action, name, amount,
+      user: ME,
+      user_id: USER_ID,
+      chat_id: CHAT_ID,          // ID группы (или лички) для уведомлений
+      group_chat_id: GROUP_CHAT_ID  // явно передаём group_chat_id для бэкенда
+    })
   }).catch(e => console.log('notify error:', e));
 }
 
@@ -336,48 +392,111 @@ function renderList() {
   const done=items.filter(i=>i.done).length;
   document.getElementById('pill-a').textContent=active;
   document.getElementById('pill-d').textContent=done+' ✅';
+  el.textContent='';
   if(!list.length){
-    const m={all:['🛒','Lista jest pusta','Dodaj pierwszy produkt'],
-      free:['✅','Wszystko wzięte!','Nie ma wolnych'],
-      mine:['🙋','Nic nie masz','Kliknij Biorę'],
-      done:['🎉','Nic nie kupiono','Oznaczaj Kupiłem']};
+    const m={all:['🛒','Спіс пусты','Дадайце першы тавар'],
+      free:['✅','Усё ўзята!','Няма вольных тавараў'],
+      mine:['🙋','Нічога не ўзята','Націсніце Бяру'],
+      done:['🎉','Нічога не куплена','Адзначайце Купіў']};
     const[ic,t,s]=m[filter];
-    el.innerHTML=`<div class="empty"><div class="ei">${ic}</div><h3>${t}</h3><p>${s}</p></div>`;
+    const empty=document.createElement('div'); empty.className='empty';
+    const ei=document.createElement('div'); ei.className='ei'; ei.textContent=ic;
+    const h3=document.createElement('h3'); h3.textContent=t;
+    const p=document.createElement('p'); p.textContent=s;
+    empty.append(ei,h3,p); el.appendChild(empty);
     return;
   }
   const free=list.filter(i=>!i.taken_by&&!i.done);
   const taken=list.filter(i=>i.taken_by&&!i.done);
   const doneI=list.filter(i=>i.done);
-  let html='';
-  if(free.length&&filter==='all') html+='<div class="sec-label">Do kupienia</div>';
-  free.forEach(it=>html+=cardHTML(it));
-  if(taken.length&&filter==='all') html+='<div class="sec-label">Ktoś bierze</div>';
-  taken.forEach(it=>html+=cardHTML(it));
-  if(doneI.length&&filter==='all') html+='<div class="sec-label">Kupione</div>';
-  doneI.forEach(it=>html+=cardHTML(it));
-  el.innerHTML=html;
+  function addLabel(txt){ const d=document.createElement('div'); d.className='sec-label'; d.textContent=txt; el.appendChild(d); }
+  if(free.length&&filter==='all') addLabel('Да пакупкі');
+  free.forEach(it=>el.appendChild(createCard(it)));
+  if(taken.length&&filter==='all') addLabel('Нехта бярэ');
+  taken.forEach(it=>el.appendChild(createCard(it)));
+  if(doneI.length&&filter==='all') addLabel('Куплена');
+  doneI.forEach(it=>el.appendChild(createCard(it)));
 }
 
-function cardHTML(it){
-  const ic=em(it.name);
-  let sub='',acts='';
+function makeBtn(cls, text, handler){
+  const b=document.createElement('button');
+  b.className='act '+cls; b.textContent=text;
+  b.addEventListener('click', handler);
+  return b;
+}
+
+function createCard(it){
+  const card=document.createElement('div');
+  card.className='card'+(it.done?' done-card':'');
+  card.id='c'+it.id;
+
+  // main row
+  const main=document.createElement('div'); main.className='card-main';
+
+  const icon=document.createElement('div'); icon.className='card-icon'; icon.textContent=em(it.name);
+
+  const info=document.createElement('div'); info.className='card-info';
+  const nameEl=document.createElement('div'); nameEl.className='card-name'; nameEl.textContent=it.name;
+  info.appendChild(nameEl);
+
+  // sub label
+  const sub=document.createElement('div');
   if(it.done){
-    sub=`<div class="card-sub done-s">✅ kupił/a ${it.taken_by}</div>`;
+    sub.className='card-sub done-s'; sub.textContent='✅ купіў/ла '+(it.taken_by||'');
   } else if(it.taken_by){
-    sub=`<div class="card-sub taken">🙋 bierze ${it.taken_by}</div>`;
-    if(it.taken_by===ME){
-      acts=`<div class="card-acts"><button class="act bought" onclick="buyIt(${it.id})">✅ Kupiłem!</button><button class="act rel" onclick="releaseIt(${it.id})">Cofnij</button></div>`;
-    } else {
-      acts=`<div class="card-acts"><button class="act bought" onclick="buyIt(${it.id})">✅ Kupiłem</button></div>`;
-    }
+    sub.className='card-sub taken'; sub.textContent='🙋 бярэ '+(it.taken_by||'');
   } else {
-    sub=`<div class="card-sub">dodał/a ${it.added_by}</div>`;
-    acts=`<div class="card-acts"><button class="act take" onclick="takeIt(${it.id})">🙋 Biorę</button><button class="act bought" onclick="buyIt(${it.id})">✅ Już kupiłem</button></div>`;
+    sub.className='card-sub'; sub.textContent='дадаў/ла '+(it.added_by||'');
   }
-  return`<div class="card ${it.done?'done-card':''}" id="c${it.id}">
-    <div class="card-main"><div class="card-icon">${ic}</div>
-    <div class="card-info"><div class="card-name">${it.name}</div>${sub}</div>
-    <button class="card-del" onclick="delIt(${it.id})">✕</button></div>${acts}</div>`;
+  info.appendChild(sub);
+
+  const delBtn=document.createElement('button');
+  delBtn.className='card-del'; delBtn.textContent='✕';
+  delBtn.addEventListener('click',()=>delIt(it.id));
+
+  main.append(icon, info, delBtn);
+  card.appendChild(main);
+
+  // action buttons
+  if(!it.done){
+    const acts=document.createElement('div'); acts.className='card-acts';
+    if(it.taken_by){
+      acts.appendChild(makeBtn('bought','✅ Купіў'+(it.taken_by===ME?'!':''),()=>buyIt(it.id)));
+      if(it.taken_by===ME) acts.appendChild(makeBtn('rel','Адмяніць',()=>releaseIt(it.id)));
+    } else {
+      acts.appendChild(makeBtn('take','🙋 Бяру',()=>takeIt(it.id)));
+      acts.appendChild(makeBtn('bought','✅ Ужо купіў',()=>buyIt(it.id)));
+    }
+    card.appendChild(acts);
+  }
+
+  return card;
+}
+
+function renderExpenses(){
+  const el=document.getElementById('exp-list');
+  el.textContent='';
+  if(!expenses.length){
+    const empty=document.createElement('div'); empty.className='empty';
+    const ei=document.createElement('div'); ei.className='ei'; ei.textContent='💸';
+    const h3=document.createElement('h3'); h3.textContent='Няма выдаткаў';
+    const p=document.createElement('p'); p.textContent='Дадайце першы выдатак';
+    empty.append(ei,h3,p); el.appendChild(empty);
+    return;
+  }
+  expenses.forEach(e=>{
+    const card=document.createElement('div'); card.className='exp-card';
+    const top=document.createElement('div'); top.className='exp-top';
+    const who=document.createElement('span'); who.className='exp-who'; who.textContent=e.paid_by||'';
+    const amt=document.createElement('span'); amt.className='exp-amt'; amt.textContent=parseFloat(e.amount).toFixed(2)+' р';
+    top.append(who,amt);
+    const desc=document.createElement('div'); desc.className='exp-desc'; desc.textContent=e.description||'—';
+    const date=document.createElement('div');
+    date.style.cssText='font-size:10.5px;color:var(--hint);margin-top:3px;font-weight:600';
+    date.textContent=e.created_at||'';
+    card.append(top,desc,date);
+    el.appendChild(card);
+  });
 }
 
 async function addItem(){
@@ -385,11 +504,11 @@ async function addItem(){
   const raw=inp.value.trim(); if(!raw) return;
   inp.value='';
   const res=await api(`/api/items?chat_id=${CHAT_ID}&action=add`,'POST',{name:raw,added_by:ME});
-  if(res.ok){ toast('Dodano: '+raw); notify('add',raw); await loadItems(); }
+  if(res.ok){ toast('Дадана: '+raw); notify('add',raw); await loadItems(); }
 }
 async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
 async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
-async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); notify('bought',name); toast('Kupiono: '+name+' 🎉'); await loadItems(); }
+async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
 async function delIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id}); notify('delete',name); await loadItems(); }
 document.getElementById('add-inp').addEventListener('keydown',e=>{if(e.key==='Enter')addItem()});
 
@@ -397,24 +516,15 @@ async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
   renderExpenses();
 }
-function renderExpenses(){
-  const el=document.getElementById('exp-list');
-  if(!expenses.length){ el.innerHTML='<div class="empty"><div class="ei">💸</div><h3>Brak wydatków</h3><p>Dodaj pierwszy wydatek</p></div>'; return; }
-  el.innerHTML=expenses.map(e=>`<div class="exp-card">
-    <div class="exp-top"><span class="exp-who">${e.paid_by}</span><span class="exp-amt">${parseFloat(e.amount).toFixed(2)} zł</span></div>
-    <div class="exp-desc">${e.description||'—'}</div>
-    <div style="font-size:10.5px;color:var(--hint);margin-top:3px;font-weight:600">${e.created_at||''}</div>
-  </div>`).join('');
-}
 async function addExpense(){
   const amt=parseFloat(document.getElementById('exp-amt').value);
   const desc=document.getElementById('exp-desc').value.trim();
-  if(!amt||amt<=0){toast('Wpisz kwotę');return}
+  if(!amt||amt<=0){toast('Увядзіце суму');return}
   await api(`/api/expenses?chat_id=${CHAT_ID}`,'POST',{paid_by:ME,amount:amt,description:desc});
   document.getElementById('exp-amt').value='';
   document.getElementById('exp-desc').value='';
   notify('expense', desc||'wydatek', amt.toFixed(2));
-  toast(`Wydatek ${amt.toFixed(2)} zł dodany`);
+  toast(`Выдатак ${amt.toFixed(2)} р дададзены`);
   await loadExpenses(); await loadBalance();
 }
 
@@ -422,30 +532,49 @@ async function loadBalance(){
   const data=await api(`/api/expenses?chat_id=${CHAT_ID}&action=balance`);
   const{totals,share}=data;
   const total=Object.values(totals).reduce((a,b)=>a+b,0);
-  document.getElementById('bal-ttl').textContent=total.toFixed(2)+' zł';
-  document.getElementById('bal-share').textContent='na osobę: '+share.toFixed(2)+' zł';
+  document.getElementById('bal-ttl').textContent=total.toFixed(2)+' р';
+  document.getElementById('bal-share').textContent='на чалавека: '+share.toFixed(2)+' р';
   const el=document.getElementById('bal-cards');
-  if(!Object.keys(totals).length){ el.innerHTML='<div class="empty"><div class="ei">⚖️</div><h3>Brak danych</h3></div>'; return; }
+  el.textContent='';
+  if(!Object.keys(totals).length){
+    const empty=document.createElement('div'); empty.className='empty';
+    const ei=document.createElement('div'); ei.className='ei'; ei.textContent='⚖️';
+    const h3=document.createElement('h3'); h3.textContent='Няма даных';
+    empty.append(ei,h3); el.appendChild(empty);
+    return;
+  }
   const maxP=Math.max(...Object.values(totals));
   const COLS=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
   let ci=0;
-  el.innerHTML=Object.entries(totals).map(([name,paid])=>{
+  Object.entries(totals).forEach(([name,paid])=>{
     const diff=paid-share;
     let st,cls;
-    if(diff>0.5){st=`+${diff.toFixed(2)} zł — zwrócą`;cls='credit';}
-    else if(diff<-0.5){st=`${diff.toFixed(2)} zł — dopłaci`;cls='owe';}
-    else{st='w balansie ✓';cls='ok';}
+    if(diff>0.5){st=`+${diff.toFixed(2)} р — вернуць`;cls='credit';}
+    else if(diff<-0.5){st=`${diff.toFixed(2)} р — даплаціць`;cls='owe';}
+    else{st='у балансе ✓';cls='ok';}
     const pct=Math.round(paid/maxP*100);
-    return`<div class="bal-card"><div class="bal-name">${name}</div>
-      <div class="bal-bar"><div class="bal-fill" style="width:${pct}%;background:${COLS[ci++%COLS.length]}"></div></div>
-      <div class="bal-row"><span class="bal-paid">zapłacił/a ${paid.toFixed(2)} zł</span>
-      <span class="bal-st ${cls}">${st}</span></div></div>`;
-  }).join('');
+    const col=COLS[ci++%COLS.length];
+
+    const card=document.createElement('div'); card.className='bal-card';
+    const nameEl=document.createElement('div'); nameEl.className='bal-name'; nameEl.textContent=name;
+    const bar=document.createElement('div'); bar.className='bal-bar';
+    const fill=document.createElement('div'); fill.className='bal-fill';
+    fill.style.width=pct+'%'; fill.style.background=col;
+    bar.appendChild(fill);
+    const row=document.createElement('div'); row.className='bal-row';
+    const paidEl=document.createElement('span'); paidEl.className='bal-paid'; paidEl.textContent=`заплаціў/ла ${paid.toFixed(2)} р`;
+    const stEl=document.createElement('span'); stEl.className=`bal-st ${cls}`; stEl.textContent=st;
+    row.append(paidEl,stEl);
+    card.append(nameEl,bar,row);
+    el.appendChild(card);
+  });
 }
 
 async function loadSettings(){
   document.getElementById('set-me').textContent = ME;
   document.getElementById('set-chatid').textContent = CHAT_ID;
+  document.getElementById('set-version').textContent = APP_VERSION;
+  document.getElementById('set-updated').textContent = APP_UPDATED;
   const s = await api(`/api/settings?chat_id=${CHAT_ID}`);
   ['add','take','bought','delete','expense'].forEach(key => {
     const el = document.getElementById(`notif_${key}`);
@@ -457,7 +586,7 @@ async function saveSetting(key, value){
   const s = await api(`/api/settings?chat_id=${CHAT_ID}`);
   s[key] = value;
   await api(`/api/settings?chat_id=${CHAT_ID}`, 'POST', s);
-  toast(value ? '🔔 Włączone' : '🔕 Wyłączone');
+  toast(value ? '🔔 Уключана' : '🔕 Выключана');
   
 }
 
