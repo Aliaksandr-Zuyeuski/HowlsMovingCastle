@@ -56,15 +56,23 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "skipped": True})
             return
 
-        notifications = {
-            "add":     f"🔔 *{actor}* дадаў/ла: *{name}*",
-            "take":    f"🙋 *{actor}* бярэ: *{name}*",
-            "bought":  f"✅ *{actor}* купіў/ла: *{name}*",
-            "delete":  f"🗑 *{actor}* выдаліў/ла: *{name}*",
-            "expense": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
-        }
+        # Для добавления — если несколько товаров через запятую, делаем список
+        if action == "add":
+            items = [i.strip() for i in name.split(",") if i.strip()]
+            if len(items) > 1:
+                bullet_list = "\n".join(f"• {i}" for i in items)
+                msg_text = f"🔔 *{actor}* дадаў/ла ў спіс:\n{bullet_list}"
+            else:
+                msg_text = f"🔔 *{actor}* дадаў/ла: *{name}*"
+        else:
+            notifications = {
+                "take":    f"🙋 *{actor}* бярэ: *{name}*",
+                "bought":  f"✅ *{actor}* купіў/ла: *{name}*",
+                "delete":  f"🗑 *{actor}* выдаліў/ла: *{name}*",
+                "expense": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
+            }
+            msg_text = notifications.get(action)
 
-        msg_text = notifications.get(action)
         if not msg_text:
             self._json({"ok": False, "error": "unknown action"})
             return
