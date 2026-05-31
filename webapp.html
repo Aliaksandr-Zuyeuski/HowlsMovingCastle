@@ -38,16 +38,26 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 .pill{border-radius:20px;padding:4px 11px;font-size:11px;font-weight:800;background:var(--secondary);color:var(--hint)}
 .pill.blue{background:rgba(99,102,241,.12);color:var(--btn)}
 .pill.green{background:rgba(16,185,129,.12);color:var(--g)}
-.add-row{display:flex;gap:7px}
-.add-inp{flex:1;background:var(--secondary);border:2px solid transparent;border-radius:12px;
-  padding:10px 13px;font-family:var(--font);font-size:14px;font-weight:700;
-  color:var(--text);outline:none;transition:.2s}
-.add-inp:focus{border-color:var(--btn);background:var(--bg)}
-.add-inp::placeholder{color:var(--hint);font-weight:500}
-.add-btn{width:44px;height:44px;background:var(--btn);border:none;border-radius:12px;
-  color:var(--btn-text);font-size:22px;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;flex-shrink:0;transition:.12s;font-weight:900}
-.add-btn:active{transform:scale(.88)}
+.add-row{display:flex;flex-direction:column;gap:7px}
+.tag-field{display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+  background:var(--secondary);border:2px solid transparent;border-radius:12px;
+  padding:7px 9px;min-height:46px;cursor:text;transition:.2s}
+.tag-field.focus{border-color:var(--btn);background:var(--bg)}
+.tag{display:flex;align-items:center;gap:4px;background:var(--btn);color:#fff;
+  border-radius:8px;padding:4px 8px 4px 10px;font-size:13px;font-weight:700;
+  animation:si .15s cubic-bezier(.34,1.56,.64,1)}
+.tag-x{background:none;border:none;color:rgba(255,255,255,.8);font-size:14px;
+  cursor:pointer;padding:0;line-height:1;font-weight:900}
+.tag-x:hover{color:#fff}
+.tag-inp{border:none;background:none;outline:none;font-family:var(--font);
+  font-size:14px;font-weight:700;color:var(--text);flex:1;min-width:100px}
+.tag-inp::placeholder{color:var(--hint);font-weight:500}
+.add-submit{display:none;width:100%;padding:11px;background:var(--btn);
+  color:var(--btn-text);border:none;border-radius:11px;font-family:var(--font);
+  font-size:14px;font-weight:900;cursor:pointer;transition:.12s;
+  align-items:center;justify-content:center;gap:6px}
+.add-submit.show{display:flex}
+.add-submit:active{transform:scale(.97)}
 .ftabs{display:flex;gap:5px;padding:9px 14px 7px;overflow-x:auto;scrollbar-width:none;
   background:var(--bg);border-bottom:1px solid rgba(0,0,0,0.05)}
 .ftabs::-webkit-scrollbar{display:none}
@@ -152,8 +162,12 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
     </div>
     <div class="add-row">
-      <input class="add-inp" id="add-inp" placeholder="Дадаць тавар..." maxlength="80"/>
-      <button class="add-btn" onclick="addItem()">+</button>
+      <div class="tag-field" id="tag-field" onclick="document.getElementById('tag-inp').focus()">
+        <input class="tag-inp" id="tag-inp" placeholder="Дадаць тавар..." maxlength="80"/>
+      </div>
+      <button class="add-submit" id="add-submit" onclick="submitTags()">
+        <span id="add-submit-label">Дадаць</span>
+      </button>
     </div>
   </div>
   <div class="ftabs">
@@ -261,10 +275,14 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
           <div class="set-name">💬 ID чата</div>
           <div class="set-desc" id="set-chatid">—</div>
         </div>
+      </div>
+      <div class="set-row">
         <div class="set-info">
           <div class="set-name">📦 Версія</div>
           <div class="set-desc" id="set-version">—</div>
         </div>
+      </div>
+      <div class="set-row">
         <div class="set-info">
           <div class="set-name">🕐 Апошняе абнаўленне</div>
           <div class="set-desc" id="set-updated">—</div>
@@ -499,18 +517,83 @@ function renderExpenses(){
   });
 }
 
-async function addItem(){
-  const inp=document.getElementById('add-inp');
-  const raw=inp.value.trim(); if(!raw) return;
-  inp.value='';
-  const res=await api(`/api/items?chat_id=${CHAT_ID}&action=add`,'POST',{name:raw,added_by:ME});
-  if(res.ok){ toast('Дадана: '+raw); notify('add',raw); await loadItems(); }
+// ── Tag input ──────────────────────────────────────────────
+let pendingTags = [];
+
+function updateTagUI() {
+  const field = document.getElementById('tag-field');
+  const inp   = document.getElementById('tag-inp');
+  const btn   = document.getElementById('add-submit');
+  const lbl   = document.getElementById('add-submit-label');
+  field.querySelectorAll('.tag').forEach(t => t.remove());
+  pendingTags.forEach((name, i) => {
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.innerHTML = `${em(name)} ${name}<button class="tag-x" onclick="removeTag(${i})">✕</button>`;
+    field.insertBefore(tag, inp);
+  });
+  const count = pendingTags.length;
+  btn.classList.toggle('show', count > 0);
+  lbl.textContent = count > 1 ? `Дадаць усё (${count})` : 'Дадаць';
 }
+
+function removeTag(i) {
+  pendingTags.splice(i, 1);
+  updateTagUI();
+}
+
+function pushTag(raw) {
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+  parts.forEach(p => { if (p && !pendingTags.includes(p)) pendingTags.push(p); });
+  document.getElementById('tag-inp').value = '';
+  updateTagUI();
+}
+
+document.getElementById('tag-inp').addEventListener('keydown', e => {
+  const inp = e.target;
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = inp.value.trim().replace(/,$/, '');
+    if (val) pushTag(val); else if (pendingTags.length) submitTags();
+  } else if (e.key === 'Backspace' && !inp.value && pendingTags.length) {
+    pendingTags.pop();
+    updateTagUI();
+  }
+});
+
+document.getElementById('tag-inp').addEventListener('input', e => {
+  if (e.target.value.includes(',')) pushTag(e.target.value);
+});
+
+document.getElementById('tag-field').addEventListener('focus', () => {
+  document.getElementById('tag-field').classList.add('focus');
+}, true);
+document.getElementById('tag-field').addEventListener('blur', () => {
+  document.getElementById('tag-field').classList.remove('focus');
+}, true);
+
+async function submitTags() {
+  const inp = document.getElementById('tag-inp');
+  const val = inp.value.trim().replace(/,$/, '');
+  if (val) pushTag(val);
+  if (!pendingTags.length) return;
+  const tags = [...pendingTags];
+  pendingTags = [];
+  updateTagUI();
+  for (const name of tags) {
+    await api(`/api/items?chat_id=${CHAT_ID}&action=add`, 'POST', {name, added_by: ME});
+  }
+  notify('add', tags.join(', '));
+  toast(tags.length > 1 ? `Дадана ${tags.length} тавары 🛒` : `Дадана: ${tags[0]}`);
+  await loadItems();
+}
+
+async function addItem() { await submitTags(); }
 async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
 async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
 async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
 async function delIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id}); notify('delete',name); await loadItems(); }
-document.getElementById('add-inp').addEventListener('keydown',e=>{if(e.key==='Enter')addItem()});
+
 
 async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
@@ -523,7 +606,7 @@ async function addExpense(){
   await api(`/api/expenses?chat_id=${CHAT_ID}`,'POST',{paid_by:ME,amount:amt,description:desc});
   document.getElementById('exp-amt').value='';
   document.getElementById('exp-desc').value='';
-  notify('expense', desc||'wydatek', amt.toFixed(2));
+  notify('expense', desc||'выдатак', amt.toFixed(2));
   toast(`Выдатак ${amt.toFixed(2)} р дададзены`);
   await loadExpenses(); await loadBalance();
 }
@@ -593,6 +676,10 @@ async function saveSetting(key, value){
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 loadItems();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error:', e));
+}
 </script>
 </body>
 </html>
