@@ -44,7 +44,7 @@ class handler(BaseHTTPRequestHandler):
         action  = data.get("action", "")
         name    = data.get("name", "")
         amount  = data.get("amount", "")
-        actor   = data.get("user", "Uczestnik")
+        actor   = data.get("user", "Удзельнік")
 
         if not chat_id or not action:
             self._json({"ok": False, "error": "missing fields"})
@@ -57,11 +57,11 @@ class handler(BaseHTTPRequestHandler):
             return
 
         notifications = {
-            "add":     f"🔔 *{actor}* dodał/a: *{name}*",
-            "take":    f"🙋 *{actor}* bierze: *{name}*",
-            "bought":  f"✅ *{actor}* kupił/a: *{name}*",
-            "delete":  f"🗑 *{actor}* usunął/a: *{name}*",
-            "expense": f"💰 *{actor}* dodał/a wydatek: *{amount} zł* — {name}",
+            "add":     f"🔔 *{actor}* дадаў/ла: *{name}*",
+            "take":    f"🙋 *{actor}* бярэ: *{name}*",
+            "bought":  f"✅ *{actor}* купіў/ла: *{name}*",
+            "delete":  f"🗑 *{actor}* выдаліў/ла: *{name}*",
+            "expense": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
         }
 
         msg_text = notifications.get(action)

@@ -68,11 +68,11 @@ def handle_update(update):
             group_chat_id = payload.get("group_chat_id")
 
             notifications = {
-                "add":     f"🔔 *{actor}* dodał/a: *{name}*",
-                "take":    f"🙋 *{actor}* bierze: *{name}*",
-                "bought":  f"✅ *{actor}* kupił/a: *{name}*",
-                "delete":  f"🗑 *{actor}* usunął/a: *{name}*",
-                "expense": f"💰 *{actor}* dodał/a wydatek: *{amount} zł* — {name}",
+                "add":     f"🔔 *{actor}* дадаў/ла: *{name}*",
+                "take":    f"🙋 *{actor}* бярэ: *{name}*",
+                "bought":  f"✅ *{actor}* купіў/ла: *{name}*",
+                "delete":  f"🗑 *{actor}* выдаліў/ла: *{name}*",
+                "expense": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
             }
 
             msg_text = notifications.get(action)
@@ -103,13 +103,13 @@ def handle_update(update):
                     url = f"{WEBAPP_URL}?user_id={user_id}"
                 reply_markup = {
                     "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
+                        "text": "🛒 Адкрыць спіс",
                         "web_app": {"url": url}
                     }]]
                 }
                 return make_response(
                     chat_id,
-                    "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
+                    "🛒 *Кошык — агульныя пакупкі*\n\nНацісніце кнопку, каб адкрыць спіс:",
                     reply_markup=reply_markup
                 )
             else:
@@ -118,13 +118,13 @@ def handle_update(update):
                 start_param = "g" + str(chat_id).lstrip("-")
                 reply_markup = {
                     "inline_keyboard": [[{
-                        "text": "🛒 Открыть список",
+                        "text": "🛒 Адкрыць спіс",
                         "url": f"https://t.me/Howls_MovingCastle_test_bot/test?startapp={start_param}"
                     }]]
                 }
                 send_message(
                     chat_id,
-                    "🛒 *Koszyk — wspólne zakupy*\n\nNaciśnij przycisk, aby otworzyć listę:",
+                    "🛒 *Кошык — агульныя пакупкі*\n\nНацісніце кнопку, каб адкрыць спіс:",
                     reply_markup=reply_markup
                 )
                 return None
