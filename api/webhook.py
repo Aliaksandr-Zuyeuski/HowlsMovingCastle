@@ -1,8 +1,9 @@
 import os, json, urllib.request
 from http.server import BaseHTTPRequestHandler
 
-BOT_TOKEN  = os.getenv("BOT_TOKEN", "")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "")
+BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
+WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "")
 
 
 def send_message(chat_id, text, reply_markup=None):
@@ -119,7 +120,7 @@ def handle_update(update):
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Адкрыць спіс",
-                        "url": f"https://t.me/Howls_MovingCastle_test_bot/test?startapp={start_param}"
+                        "url": f"https://t.me/{BOT_USERNAME}/app?startapp={start_param}"
                     }]]
                 }
                 send_message(
