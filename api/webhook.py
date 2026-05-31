@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler
 BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
 WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "")
+BOT_APP_NAME = os.getenv("BOT_APP_NAME", "app")
 
 
 def send_message(chat_id, text, reply_markup=None):
@@ -120,7 +121,7 @@ def handle_update(update):
                 reply_markup = {
                     "inline_keyboard": [[{
                         "text": "🛒 Адкрыць спіс",
-                        "url": f"https://t.me/{BOT_USERNAME}/app?startapp={start_param}"
+                        "url": f"https://t.me/{BOT_USERNAME}/{BOT_APP_NAME}?startapp={start_param}"
                     }]]
                 }
                 send_message(
