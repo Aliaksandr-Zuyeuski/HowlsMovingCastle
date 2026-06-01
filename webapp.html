@@ -78,8 +78,11 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 .list{padding:9px 12px;display:flex;flex-direction:column;gap:7px}
 .sec-label{font-size:10px;font-weight:900;color:var(--hint);letter-spacing:.8px;text-transform:uppercase;padding:5px 2px 0}
 .card{background:var(--bg);border-radius:var(--rad);box-shadow:var(--shadow);
-  overflow:hidden;animation:si .2s cubic-bezier(.34,1.56,.64,1) forwards}
+  overflow:hidden;animation:none}
 @keyframes si{from{opacity:0;transform:translateY(-7px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes card-take{0%{transform:none}30%{transform:scale(1.02);background:rgba(245,158,11,.15)}100%{transform:none}}
+@keyframes card-buy{0%{transform:none;opacity:1}40%{transform:scale(1.03);opacity:1;box-shadow:0 0 0 3px var(--g)}100%{transform:translateY(6px) scale(.96);opacity:0}}
+@keyframes card-del{0%{transform:none;opacity:1}100%{transform:translateX(60px);opacity:0}}
 .card.done-card{opacity:.45}
 .card-main{display:flex;align-items:center;gap:11px;padding:13px 13px 9px}
 .card-icon{width:42px;height:42px;border-radius:13px;background:var(--secondary);
@@ -320,7 +323,7 @@ const API = window.location.origin;
 
 console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID, tgUser: tg?.initDataUnsafe?.user });
 
-let items = [], expenses = [], filter = 'all';
+let items = [], expenses = [], filter = 'all', newItemNames = new Set();
 
 const EM = {
   mleko:'🥛',chleb:'🍞',masło:'🧈',maslo:'🧈',jajka:'🥚',ser:'🧀',
@@ -423,6 +426,9 @@ function createCard(it){
   const card=document.createElement('div');
   card.className='card'+(it.done?' done-card':'');
   card.id='c'+it.id;
+  if(newItemNames.has(it.name)){
+    card.style.animation='si .25s cubic-bezier(.34,1.56,.64,1) forwards';
+  }
   const main=document.createElement('div'); main.className='card-main';
   const icon=document.createElement('div'); icon.className='card-icon'; icon.textContent=em(it.name);
   const info=document.createElement('div'); info.className='card-info';
@@ -596,14 +602,46 @@ async function submitTags() {
     tg?.HapticFeedback?.impactOccurred('light');
     toast(tags.length > 1 ? `Дадана ${tags.length} тавары 🛒` : `Дадана: ${tags[0]}`);
   }
+  tags.forEach(n => newItemNames.add(n));
   await loadItems();
+  newItemNames.clear();
 }
 
 async function addItem() { await submitTags(); }
-async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); tg?.HapticFeedback?.impactOccurred('medium'); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
+function animateCard(id, anim, delay=320) {
+  const card = document.getElementById('c'+id);
+  if (!card) return Promise.resolve();
+  return new Promise(resolve => {
+    card.style.animation = anim;
+    card.style.pointerEvents = 'none';
+    setTimeout(resolve, delay);
+  });
+}
+
+async function takeIt(id){
+  await animateCard(id, 'card-take .4s ease forwards', 400);
+  await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME});
+  tg?.HapticFeedback?.impactOccurred('medium');
+  notify('take',items.find(i=>i.id===id)?.name||'');
+  await loadItems();
+}
 async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
-async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); tg?.HapticFeedback?.notificationOccurred('success'); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
-async function delIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id}); notify('delete',name); await loadItems(); }
+async function buyIt(id){
+  const name=items.find(i=>i.id===id)?.name||'';
+  await animateCard(id, 'card-buy .4s ease forwards', 380);
+  await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME});
+  tg?.HapticFeedback?.notificationOccurred('success');
+  notify('bought',name);
+  toast('Куплена: '+name+' 🎉');
+  await loadItems();
+}
+async function delIt(id){
+  const name=items.find(i=>i.id===id)?.name||'';
+  await animateCard(id, 'card-del .28s ease forwards', 260);
+  await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id});
+  notify('delete',name);
+  await loadItems();
+}
 
 async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
