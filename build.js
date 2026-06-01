@@ -20,5 +20,11 @@ html = html.replace(/const APP_VERSION = '.*?';/, `const APP_VERSION = '${versio
 html = html.replace(/const APP_UPDATED = '.*?';/, `const APP_UPDATED = '${buildDate}';`);
 fs.writeFileSync('webapp.html', html);
 
+// Вписываем версию кэша в sw.js
+let sw = fs.readFileSync('sw.js', 'utf8');
+sw = sw.replace(/const CACHE = '.*?';/, `const CACHE = '${version}';`);
+fs.writeFileSync('sw.js', sw);
+
 console.log(`✅ Version: ${version}`);
 console.log(`✅ Build date: ${buildDate}`);
+console.log(`✅ SW cache: ${version}`);

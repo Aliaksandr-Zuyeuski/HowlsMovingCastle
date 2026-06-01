@@ -38,16 +38,36 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 .pill{border-radius:20px;padding:4px 11px;font-size:11px;font-weight:800;background:var(--secondary);color:var(--hint)}
 .pill.blue{background:rgba(99,102,241,.12);color:var(--btn)}
 .pill.green{background:rgba(16,185,129,.12);color:var(--g)}
-.add-row{display:flex;gap:7px}
-.add-inp{flex:1;background:var(--secondary);border:2px solid transparent;border-radius:12px;
-  padding:10px 13px;font-family:var(--font);font-size:14px;font-weight:700;
-  color:var(--text);outline:none;transition:.2s}
-.add-inp:focus{border-color:var(--btn);background:var(--bg)}
-.add-inp::placeholder{color:var(--hint);font-weight:500}
-.add-btn{width:44px;height:44px;background:var(--btn);border:none;border-radius:12px;
-  color:var(--btn-text);font-size:22px;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;flex-shrink:0;transition:.12s;font-weight:900}
-.add-btn:active{transform:scale(.88)}
+.add-row{display:flex;flex-direction:column;gap:7px}
+.tag-field{display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+  background:var(--secondary);border:2px solid transparent;border-radius:12px;
+  padding:7px 9px;min-height:46px;cursor:text;transition:.2s}
+.tag-field.focus{border-color:var(--btn);background:var(--bg)}
+.tag{display:flex;align-items:center;gap:4px;background:var(--btn);color:#fff;
+  border-radius:8px;padding:4px 8px 4px 10px;font-size:13px;font-weight:700;
+  animation:si .15s cubic-bezier(.34,1.56,.64,1)}
+.tag-x{background:none;border:none;color:rgba(255,255,255,.8);font-size:14px;
+  cursor:pointer;padding:0;line-height:1;font-weight:900}
+.tag-x:hover{color:#fff}
+.tag-inp{border:none;background:none;outline:none;font-family:var(--font);
+  font-size:14px;font-weight:700;color:var(--text);flex:1;min-width:100px}
+.tag-inp::placeholder{color:var(--hint);font-weight:500}
+.add-bottom{display:none;align-items:center;justify-content:space-between;gap:8px}
+.add-bottom.show{display:flex}
+.add-submit{flex:1;padding:11px;background:var(--btn);
+  color:var(--btn-text);border:none;border-radius:11px;font-family:var(--font);
+  font-size:14px;font-weight:900;cursor:pointer;transition:.12s;
+  display:flex;align-items:center;justify-content:center;gap:6px}
+.add-submit:active{transform:scale(.97)}
+.buy-toggle{display:flex;align-items:center;gap:6px;background:var(--secondary);
+  border-radius:11px;padding:10px 12px;cursor:pointer;flex-shrink:0;
+  border:2px solid transparent;transition:.2s;white-space:nowrap}
+.buy-toggle.on{background:rgba(16,185,129,.12);border-color:var(--g)}
+.buy-toggle-cb{width:18px;height:18px;border-radius:5px;border:2px solid var(--hint);
+  display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.buy-toggle.on .buy-toggle-cb{background:var(--g);border-color:var(--g)}
+.buy-toggle-lbl{font-size:12px;font-weight:800;color:var(--hint);transition:.2s}
+.buy-toggle.on .buy-toggle-lbl{color:var(--g)}
 .ftabs{display:flex;gap:5px;padding:9px 14px 7px;overflow-x:auto;scrollbar-width:none;
   background:var(--bg);border-bottom:1px solid rgba(0,0,0,0.05)}
 .ftabs::-webkit-scrollbar{display:none}
@@ -112,7 +132,6 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 .bal-paid{font-size:11.5px;color:var(--hint);font-weight:600}
 .bal-st{font-size:12px;font-weight:800}
 .owe{color:var(--r)}.ok{color:var(--g)}.credit{color:var(--o)}
-/* SETTINGS */
 .set-wrap{padding:9px 12px;display:flex;flex-direction:column;gap:9px}
 .set-card{background:var(--bg);border-radius:var(--rad);box-shadow:var(--shadow);overflow:hidden}
 .set-card-title{font-size:11px;font-weight:900;color:var(--hint);
@@ -152,8 +171,18 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
       </div>
     </div>
     <div class="add-row">
-      <input class="add-inp" id="add-inp" placeholder="Дадаць тавар..." maxlength="80"/>
-      <button class="add-btn" onclick="addItem()">+</button>
+      <div class="tag-field" id="tag-field" onclick="document.getElementById('tag-inp').focus()">
+        <input class="tag-inp" id="tag-inp" placeholder="Дадаць тавар..." maxlength="80"/>
+      </div>
+      <div class="add-bottom" id="add-bottom">
+        <button class="add-submit" id="add-submit" onclick="submitTags()">
+          <span id="add-submit-label">Дадаць</span>
+        </button>
+        <div class="buy-toggle" id="buy-toggle" onclick="toggleBuyMode()">
+          <div class="buy-toggle-cb" id="buy-toggle-cb"></div>
+          <span class="buy-toggle-lbl">Ужо купіў</span>
+        </div>
+      </div>
     </div>
   </div>
   <div class="ftabs">
@@ -202,50 +231,35 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
           <div class="set-name">🔔 Даданне тавару</div>
           <div class="set-desc">Нехта дадаў новы тавар у спіс</div>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="notif_add" onchange="saveSetting('notif_add', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle"><input type="checkbox" id="notif_add" onchange="saveSetting('notif_add', this.checked)"><span class="toggle-slider"></span></label>
       </div>
       <div class="set-row">
         <div class="set-info">
           <div class="set-name">🙋 Узяцце тавару</div>
           <div class="set-desc">Нехта ўзяў тавар для пакупкі</div>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="notif_take" onchange="saveSetting('notif_take', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle"><input type="checkbox" id="notif_take" onchange="saveSetting('notif_take', this.checked)"><span class="toggle-slider"></span></label>
       </div>
       <div class="set-row">
         <div class="set-info">
           <div class="set-name">✅ Пакупка тавару</div>
           <div class="set-desc">Нехта купіў тавар</div>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="notif_bought" onchange="saveSetting('notif_bought', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle"><input type="checkbox" id="notif_bought" onchange="saveSetting('notif_bought', this.checked)"><span class="toggle-slider"></span></label>
       </div>
       <div class="set-row">
         <div class="set-info">
           <div class="set-name">🗑 Выдаленне тавару</div>
           <div class="set-desc">Нехта выдаліў тавар са спіса</div>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="notif_delete" onchange="saveSetting('notif_delete', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle"><input type="checkbox" id="notif_delete" onchange="saveSetting('notif_delete', this.checked)"><span class="toggle-slider"></span></label>
       </div>
       <div class="set-row">
         <div class="set-info">
           <div class="set-name">💰 Даданне выдатку</div>
           <div class="set-desc">Нехта дадаў новы выдатак</div>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="notif_expense" onchange="saveSetting('notif_expense', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle"><input type="checkbox" id="notif_expense" onchange="saveSetting('notif_expense', this.checked)"><span class="toggle-slider"></span></label>
       </div>
     </div>
     <div class="set-card">
@@ -261,10 +275,14 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
           <div class="set-name">💬 ID чата</div>
           <div class="set-desc" id="set-chatid">—</div>
         </div>
+      </div>
+      <div class="set-row">
         <div class="set-info">
           <div class="set-name">📦 Версія</div>
           <div class="set-desc" id="set-version">—</div>
         </div>
+      </div>
+      <div class="set-row">
         <div class="set-info">
           <div class="set-name">🕐 Апошняе абнаўленне</div>
           <div class="set-desc" id="set-updated">—</div>
@@ -289,38 +307,18 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const params = new URLSearchParams(window.location.search);
 
-// Имя пользователя: сначала из Telegram WebApp (работает т.к. открыто как web_app),
-// иначе fallback
 const APP_VERSION = '0.1.0-beta';
 const APP_UPDATED = '30.05.2026 09:44';
 const ME = tg?.initDataUnsafe?.user?.first_name || 'Участник';
-
-// user_id: из Telegram WebApp (надёжнее) или из URL-параметра (запасной вариант)
 const USER_ID = tg?.initDataUnsafe?.user?.id || params.get('user_id') || '0';
-
-// ID группы: из startapp параметра (когда открыто через t.me/bot?startapp=gXXX)
-// или из URL-параметра (запасной вариант)
 const startParam = tg?.initDataUnsafe?.start_param || '';
 const GROUP_CHAT_ID = startParam.startsWith('g')
     ? '-' + startParam.slice(1)
     : params.get('group_chat_id') || null;
-
-// CHAT_ID для хранения данных списка — используем группу если есть, иначе user_id
 const CHAT_ID = GROUP_CHAT_ID || USER_ID;
-
 const API = window.location.origin;
 
-// Отладка (можно убрать после проверки)
-console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID,
-  tgUser: tg?.initDataUnsafe?.user });
-
-// // Временный debug — показывает параметры прямо на экране
-// setTimeout(()=>{
-//   const d = document.createElement('div');
-//   d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#fff;font-size:11px;padding:8px;z-index:9999;word-break:break-all';
-//   d.textContent = `start_param: ${tg?.initDataUnsafe?.start_param || 'null'} | GROUP: ${GROUP_CHAT_ID} | USER: ${USER_ID} | CHAT: ${CHAT_ID}`;
-//   document.body.appendChild(d);
-// }, 500);
+console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID, tgUser: tg?.initDataUnsafe?.user });
 
 let items = [], expenses = [], filter = 'all';
 
@@ -331,18 +329,23 @@ const EM = {
   ziemniaki:'🥔',marchew:'🥕',cebula:'🧅',makaron:'🍝',ryż:'🍚',
   молоко:'🥛',хлеб:'🍞',масло:'🧈',яйца:'🥚',мясо:'🥩',вода:'💧',
 };
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str.replace(' ', 'T') + 'Z');
+  return d.toLocaleString('ru', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).replace(',', '');
+}
+
 function em(n){ const l=n.toLowerCase(); for(const[k,v] of Object.entries(EM)) if(l.includes(k)) return v; return '🛒'; }
 
-// initData для верификации на сервере (подписана Telegram, не подделать)
 const INIT_DATA = tg?.initData || '';
 
 async function api(path, method='GET', body=null) {
   const opts = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Init-Data': INIT_DATA   // бэкенд проверяет HMAC подпись
-    }
+    headers: { 'Content-Type': 'application/json', 'X-Init-Data': INIT_DATA }
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + path, opts);
@@ -352,17 +355,8 @@ async function api(path, method='GET', body=null) {
 function notify(action, name, amount='') {
   fetch(`${API}/api/notify`, {
     method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'X-Init-Data': INIT_DATA
-    },
-    body: JSON.stringify({
-      action, name, amount,
-      user: ME,
-      user_id: USER_ID,
-      chat_id: CHAT_ID,          // ID группы (или лички) для уведомлений
-      group_chat_id: GROUP_CHAT_ID  // явно передаём group_chat_id для бэкенда
-    })
+    headers: { 'Content-Type': 'application/json', 'X-Init-Data': INIT_DATA },
+    body: JSON.stringify({ action, name, amount, user: ME, user_id: USER_ID, chat_id: CHAT_ID, group_chat_id: GROUP_CHAT_ID })
   }).catch(e => console.log('notify error:', e));
 }
 
@@ -429,35 +423,26 @@ function createCard(it){
   const card=document.createElement('div');
   card.className='card'+(it.done?' done-card':'');
   card.id='c'+it.id;
-
-  // main row
   const main=document.createElement('div'); main.className='card-main';
-
   const icon=document.createElement('div'); icon.className='card-icon'; icon.textContent=em(it.name);
-
   const info=document.createElement('div'); info.className='card-info';
   const nameEl=document.createElement('div'); nameEl.className='card-name'; nameEl.textContent=it.name;
   info.appendChild(nameEl);
-
-  // sub label
   const sub=document.createElement('div');
   if(it.done){
     sub.className='card-sub done-s'; sub.textContent='✅ купіў/ла '+(it.taken_by||'');
   } else if(it.taken_by){
     sub.className='card-sub taken'; sub.textContent='🙋 бярэ '+(it.taken_by||'');
   } else {
-    sub.className='card-sub'; sub.textContent='дадаў/ла '+(it.added_by||'');
+    const date = it.created_at ? ' · ' + fmtDate(it.created_at) : '';
+    sub.className='card-sub'; sub.textContent='дадаў/ла '+(it.added_by||'')+date;
   }
   info.appendChild(sub);
-
   const delBtn=document.createElement('button');
   delBtn.className='card-del'; delBtn.textContent='✕';
   delBtn.addEventListener('click',()=>delIt(it.id));
-
   main.append(icon, info, delBtn);
   card.appendChild(main);
-
-  // action buttons
   if(!it.done){
     const acts=document.createElement('div'); acts.className='card-acts';
     if(it.taken_by){
@@ -469,7 +454,6 @@ function createCard(it){
     }
     card.appendChild(acts);
   }
-
   return card;
 }
 
@@ -499,18 +483,125 @@ function renderExpenses(){
   });
 }
 
-async function addItem(){
-  const inp=document.getElementById('add-inp');
-  const raw=inp.value.trim(); if(!raw) return;
-  inp.value='';
-  const res=await api(`/api/items?chat_id=${CHAT_ID}&action=add`,'POST',{name:raw,added_by:ME});
-  if(res.ok){ toast('Дадана: '+raw); notify('add',raw); await loadItems(); }
+// ── Tag input ──────────────────────────────────────────────
+let pendingTags = [];
+let buyMode = false;
+
+function toggleBuyMode() {
+  buyMode = !buyMode;
+  const toggle = document.getElementById('buy-toggle');
+  const cb = document.getElementById('buy-toggle-cb');
+  toggle.classList.toggle('on', buyMode);
+  cb.textContent = buyMode ? '✓' : '';
+  cb.style.color = buyMode ? '#fff' : '';
+  const btn = document.getElementById('add-submit');
+  btn.style.background = buyMode ? 'var(--g)' : 'var(--btn)';
+  document.getElementById('add-submit-label').textContent =
+    pendingTags.length > 1
+      ? (buyMode ? `Купіў усё (${pendingTags.length})` : `Дадаць усё (${pendingTags.length})`)
+      : (buyMode ? 'Купіў' : 'Дадаць');
 }
+
+function updateTagUI() {
+  const field = document.getElementById('tag-field');
+  const inp   = document.getElementById('tag-inp');
+  const btn   = document.getElementById('add-bottom');
+  const lbl   = document.getElementById('add-submit-label');
+  field.querySelectorAll('.tag').forEach(t => t.remove());
+  pendingTags.forEach((name, i) => {
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.style.background = buyMode ? 'var(--g)' : 'var(--btn)';
+    tag.innerHTML = `${em(name)} ${name}<button class="tag-x" onclick="removeTag(${i})">✕</button>`;
+    field.insertBefore(tag, inp);
+  });
+  const count = pendingTags.length;
+  btn.classList.toggle('show', count > 0);
+  if(count > 1) {
+    lbl.textContent = buyMode ? `Купіў усё (${count})` : `Дадаць усё (${count})`;
+  } else {
+    lbl.textContent = buyMode ? 'Купіў' : 'Дадаць';
+  }
+  // цвет кнопки
+  document.getElementById('add-submit').style.background = buyMode ? 'var(--g)' : 'var(--btn)';
+}
+
+function removeTag(i) {
+  pendingTags.splice(i, 1);
+  updateTagUI();
+}
+
+function pushTag(raw) {
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+  parts.forEach(p => { if (p && !pendingTags.includes(p)) pendingTags.push(p); });
+  document.getElementById('tag-inp').value = '';
+  updateTagUI();
+}
+
+document.getElementById('tag-inp').addEventListener('keydown', e => {
+  const inp = e.target;
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = inp.value.trim().replace(/,$/, '');
+    if (val) pushTag(val); else if (pendingTags.length) submitTags();
+  } else if (e.key === 'Backspace' && !inp.value && pendingTags.length) {
+    pendingTags.pop();
+    updateTagUI();
+  }
+});
+
+document.getElementById('tag-inp').addEventListener('input', e => {
+  if (e.target.value.includes(',')) pushTag(e.target.value);
+});
+
+document.getElementById('tag-field').addEventListener('focus', () => {
+  document.getElementById('tag-field').classList.add('focus');
+}, true);
+document.getElementById('tag-field').addEventListener('blur', () => {
+  document.getElementById('tag-field').classList.remove('focus');
+}, true);
+
+async function submitTags() {
+  const inp = document.getElementById('tag-inp');
+  const val = inp.value.trim().replace(/,$/, '');
+  if (val) pushTag(val);
+  if (!pendingTags.length) return;
+  const tags = [...pendingTags];
+  const wasBuyMode = buyMode;
+  pendingTags = [];
+  // сброс режима купіў
+  buyMode = false;
+  document.getElementById('buy-toggle').classList.remove('on');
+  document.getElementById('buy-toggle-cb').textContent = '';
+  document.getElementById('add-submit').style.background = 'var(--btn)';
+  updateTagUI();
+
+  // добавляем все товары
+  for (const name of tags) {
+    await api(`/api/items?chat_id=${CHAT_ID}&action=add`, 'POST', {name, added_by: ME});
+  }
+
+  if (wasBuyMode) {
+    // перезагружаем список чтобы получить id только что добавленных
+    items = await api(`/api/items?chat_id=${CHAT_ID}`);
+    for (const name of tags) {
+      const item = items.find(i => i.name === name && !i.done);
+      if (item) await api(`/api/items?chat_id=${CHAT_ID}&action=buy`, 'POST', {id: item.id, user: ME});
+    }
+    notify('bought', tags.join(', '));
+    toast(tags.length > 1 ? `Куплена ${tags.length} тавары ✅` : `Куплена: ${tags[0]} ✅`);
+  } else {
+    notify('add', tags.join(', '));
+    toast(tags.length > 1 ? `Дадана ${tags.length} тавары 🛒` : `Дадана: ${tags[0]}`);
+  }
+  await loadItems();
+}
+
+async function addItem() { await submitTags(); }
 async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
 async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
 async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
 async function delIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id}); notify('delete',name); await loadItems(); }
-document.getElementById('add-inp').addEventListener('keydown',e=>{if(e.key==='Enter')addItem()});
 
 async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
@@ -523,7 +614,7 @@ async function addExpense(){
   await api(`/api/expenses?chat_id=${CHAT_ID}`,'POST',{paid_by:ME,amount:amt,description:desc});
   document.getElementById('exp-amt').value='';
   document.getElementById('exp-desc').value='';
-  notify('expense', desc||'wydatek', amt.toFixed(2));
+  notify('expense', desc||'выдатак', amt.toFixed(2));
   toast(`Выдатак ${amt.toFixed(2)} р дададзены`);
   await loadExpenses(); await loadBalance();
 }
@@ -554,7 +645,6 @@ async function loadBalance(){
     else{st='у балансе ✓';cls='ok';}
     const pct=Math.round(paid/maxP*100);
     const col=COLS[ci++%COLS.length];
-
     const card=document.createElement('div'); card.className='bal-card';
     const nameEl=document.createElement('div'); nameEl.className='bal-name'; nameEl.textContent=name;
     const bar=document.createElement('div'); bar.className='bal-bar';
@@ -587,12 +677,15 @@ async function saveSetting(key, value){
   s[key] = value;
   await api(`/api/settings?chat_id=${CHAT_ID}`, 'POST', s);
   toast(value ? '🔔 Уключана' : '🔕 Выключана');
-  
 }
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 loadItems();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error:', e));
+}
 </script>
 </body>
 </html>
