@@ -589,18 +589,20 @@ async function submitTags() {
       if (item) await api(`/api/items?chat_id=${CHAT_ID}&action=buy`, 'POST', {id: item.id, user: ME});
     }
     notify('bought', tags.join(', '));
+    tg?.HapticFeedback?.notificationOccurred('success');
     toast(tags.length > 1 ? `Куплена ${tags.length} тавары ✅` : `Куплена: ${tags[0]} ✅`);
   } else {
     notify('add', tags.join(', '));
+    tg?.HapticFeedback?.impactOccurred('light');
     toast(tags.length > 1 ? `Дадана ${tags.length} тавары 🛒` : `Дадана: ${tags[0]}`);
   }
   await loadItems();
 }
 
 async function addItem() { await submitTags(); }
-async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
+async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); tg?.HapticFeedback?.impactOccurred('medium'); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
 async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
-async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
+async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); tg?.HapticFeedback?.notificationOccurred('success'); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
 async function delIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id}); notify('delete',name); await loadItems(); }
 
 async function loadExpenses(){
