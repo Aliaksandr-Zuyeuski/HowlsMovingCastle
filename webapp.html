@@ -608,6 +608,7 @@ async function submitTags() {
 }
 
 async function addItem() { await submitTags(); }
+
 function animateCard(id, anim, delay=320) {
   const card = document.getElementById('c'+id);
   if (!card) return Promise.resolve();
@@ -619,28 +620,53 @@ function animateCard(id, anim, delay=320) {
 }
 
 async function takeIt(id){
-  await animateCard(id, 'card-take .4s ease forwards', 400);
-  await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME});
+  const name = items.find(i=>i.id===id)?.name||'';
+  // оптимистично
+  items = items.map(i => i.id===id ? {...i, taken_by: ME} : i);
+  renderList();
   tg?.HapticFeedback?.impactOccurred('medium');
-  notify('take',items.find(i=>i.id===id)?.name||'');
-  await loadItems();
+  // анимация на обновлённой карточке
+  animateCard(id, 'card-take .4s ease forwards', 400);
+  // запрос фоном
+  api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME})
+    .then(() => { notify('take', name); loadItems(); })
+    .catch(() => { loadItems(); });
 }
-async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
+
+async function releaseIt(id){
+  items = items.map(i => i.id===id ? {...i, taken_by: null} : i);
+  renderList();
+  api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id})
+    .then(() => loadItems())
+    .catch(() => loadItems());
+}
+
 async function buyIt(id){
-  const name=items.find(i=>i.id===id)?.name||'';
+  const name = items.find(i=>i.id===id)?.name||'';
+  // анимация сразу
   await animateCard(id, 'card-buy .4s ease forwards', 380);
-  await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME});
+  // оптимистично убираем из списка
+  items = items.map(i => i.id===id ? {...i, done: true, taken_by: ME} : i);
+  renderList();
   tg?.HapticFeedback?.notificationOccurred('success');
-  notify('bought',name);
   toast('Куплена: '+name+' 🎉');
-  await loadItems();
+  // запрос фоном
+  api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME})
+    .then(() => { notify('bought', name); loadItems(); })
+    .catch(() => loadItems());
 }
+
 async function delIt(id){
-  const name=items.find(i=>i.id===id)?.name||'';
+  const name = items.find(i=>i.id===id)?.name||'';
+  // анимация сразу
   await animateCard(id, 'card-del .28s ease forwards', 260);
-  await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id});
-  notify('delete',name);
-  await loadItems();
+  // оптимистично убираем
+  items = items.filter(i => i.id !== id);
+  renderList();
+  // запрос фоном
+  api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id})
+    .then(() => { notify('delete', name); loadItems(); })
+    .catch(() => loadItems());
 }
 
 async function loadExpenses(){
