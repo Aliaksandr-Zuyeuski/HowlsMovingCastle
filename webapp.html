@@ -618,9 +618,24 @@ function animateCard(id, type) {
     const h = card.offsetHeight;
 
     if (type === 'take') {
-      // просто пульс — карточка остаётся
-      card.style.animation = 'card-take .4s ease forwards';
-      setTimeout(resolve, 400);
+      // пульс оранжевым → потом схлопывается
+      card.style.transition = 'transform .15s ease, box-shadow .15s ease';
+      card.style.transform = 'scale(1.02)';
+      card.style.boxShadow = '0 0 0 3px var(--o)';
+      setTimeout(() => {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.98)';
+        card.style.transition = 'opacity .18s ease, transform .18s ease';
+      }, 150);
+      setTimeout(() => {
+        card.style.transition = 'max-height .26s cubic-bezier(.4,0,.2,1), margin-bottom .26s, opacity .1s';
+        card.style.overflow = 'hidden';
+        card.style.maxHeight = h + 'px';
+        card.offsetHeight;
+        card.style.maxHeight = '0';
+        card.style.marginBottom = '0';
+        setTimeout(resolve, 270);
+      }, 300);
       return;
     }
 
@@ -667,16 +682,21 @@ function toastRetry(msg, retryFn) {
 
 async function takeIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
-  items = items.map(i => i.id===id ? {...i, taken_by: ME} : i);
-  renderList();
   tg?.HapticFeedback?.impactOccurred('medium');
-  animateCard(id, 'take');
+  // схлопываем старую карточку
+  await animateCard(id, 'take');
+  // обновляем список — новая карточка появится в блоке "Нехта бярэ"
+  items = items.map(i => i.id===id ? {...i, taken_by: ME} : i);
+  newItemNames.add(name);
+  renderList();
+  newItemNames.clear();
   api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME})
     .then(() => notify('take', name))
     .catch(() => toastRetry('⚠️ Не атрымалася ўзяць. ', () => takeIt(id)));
 }
 
 async function releaseIt(id){
+  tg?.HapticFeedback?.impactOccurred('light');
   items = items.map(i => i.id===id ? {...i, taken_by: null} : i);
   renderList();
   api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id})
@@ -697,6 +717,7 @@ async function buyIt(id){
 
 async function delIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
+  tg?.HapticFeedback?.impactOccurred('rigid');
   await animateCard(id, 'del');
   items = items.filter(i => i.id !== id);
   renderList();
