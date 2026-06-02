@@ -77,12 +77,38 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 .ftab.on{background:var(--btn);color:#fff}
 .list{padding:9px 12px;display:flex;flex-direction:column;gap:7px}
 .sec-label{font-size:10px;font-weight:900;color:var(--hint);letter-spacing:.8px;text-transform:uppercase;padding:5px 2px 0}
+.card-swipe-wrap{position:relative;border-radius:var(--rad);overflow:hidden}
+.card-swipe-wrap .swipe-hint-take,
+.card-swipe-wrap .swipe-hint-buy{
+  position:absolute;top:0;bottom:0;width:100%;display:flex;align-items:center;
+  pointer-events:none;opacity:0;transition:opacity .1s;border-radius:var(--rad);
+  font-size:13px;font-weight:900;letter-spacing:.2px;
+}
+.card-swipe-wrap .swipe-hint-take{
+  background:linear-gradient(90deg,rgba(245,158,11,.18) 0%,rgba(245,158,11,.08) 60%,transparent 100%);
+  color:var(--o);padding-left:20px;justify-content:flex-start;
+}
+.card-swipe-wrap .swipe-hint-buy{
+  background:linear-gradient(270deg,rgba(16,185,129,.18) 0%,rgba(16,185,129,.08) 60%,transparent 100%);
+  color:var(--g);padding-right:20px;justify-content:flex-end;
+}
+.card-swipe-wrap.reveal-take .swipe-hint-take{opacity:1}
+.card-swipe-wrap.reveal-buy  .swipe-hint-buy {opacity:1}
 .card{background:var(--bg);border-radius:var(--rad);box-shadow:var(--shadow);
-  overflow:hidden;animation:none}
+  overflow:visible;animation:none;
+  will-change:transform;touch-action:pan-y;
+  transition:transform .22s cubic-bezier(.25,.46,.45,.94),box-shadow .22s;
+}
+.card-swipe-wrap{box-shadow:var(--shadow)}
+.card{box-shadow:none}
 @keyframes si{from{opacity:0;transform:translateY(-7px) scale(.97)}to{opacity:1;transform:none}}
-@keyframes card-take{0%{transform:none}30%{transform:scale(1.02);background:rgba(245,158,11,.15)}100%{transform:none}}
+@keyframes card-take{0%{transform:none}30%{transform:scale(1.02)}100%{transform:none}}
 @keyframes card-buy{0%{transform:none;opacity:1}40%{transform:scale(1.03);opacity:1;box-shadow:0 0 0 3px var(--g)}100%{transform:translateY(6px) scale(.96);opacity:0}}
 @keyframes card-del{0%{transform:none;opacity:1}100%{transform:translateX(60px);opacity:0}}
+@keyframes swipe-done-r{0%{transform:none}60%{transform:translateX(55px)}100%{transform:translateX(0);opacity:1}}
+@keyframes swipe-done-l{0%{transform:none}60%{transform:translateX(-55px)}100%{transform:translateX(0);opacity:1}}
+@keyframes hint-pulse{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+.swipe-hint-take span{display:inline-block;animation:hint-pulse 1.2s ease-in-out infinite}
 .card.done-card{opacity:.45}
 .card-main{display:flex;align-items:center;gap:11px;padding:13px 13px 9px}
 .card-icon{width:42px;height:42px;border-radius:13px;background:var(--secondary);
@@ -151,7 +177,12 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
   left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2)}
 .toggle input:checked + .toggle-slider{background:var(--btn)}
 .toggle input:checked + .toggle-slider:before{transform:translateX(18px)}
-.empty{text-align:center;padding:48px 20px;color:var(--hint)}
+.swipe-edu{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);
+  background:rgba(17,24,39,.88);color:#fff;padding:9px 18px;border-radius:20px;
+  font-size:12px;font-weight:700;pointer-events:none;z-index:150;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;opacity:0;transition:opacity .3s}
+.swipe-edu.show{opacity:1}
+.swipe-edu-arrow{font-size:16px}
 .empty .ei{font-size:50px;margin-bottom:10px}
 .empty h3{font-size:16px;font-weight:900;color:var(--text);margin-bottom:5px}
 .empty p{font-size:13px;font-weight:500;line-height:1.5}
@@ -303,6 +334,9 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 </nav>
 
 <div class="toast" id="toast"></div>
+<div class="swipe-edu" id="swipe-edu">
+  <span class="swipe-edu-arrow">👉</span> Правядзіце для «Бяру» &nbsp;|&nbsp; «Купіў» 👈
+</div>
 
 <script>
 const tg = window.Telegram?.WebApp;
@@ -423,11 +457,27 @@ function makeBtn(cls, text, handler){
 }
 
 function createCard(it){
+  // ── outer swipe wrapper ──────────────────────────────────
+  const wrap = document.createElement('div');
+  wrap.className = 'card-swipe-wrap';
+  wrap.id = 'c' + it.id;
+
+  // reveal hint layers (hidden until swipe)
+  if (!it.done) {
+    const hintTake = document.createElement('div');
+    hintTake.className = 'swipe-hint-take';
+    hintTake.innerHTML = '<span>🙋 Бяру</span>';
+    const hintBuy = document.createElement('div');
+    hintBuy.className = 'swipe-hint-buy';
+    hintBuy.innerHTML = '<span>✅ Купіў</span>';
+    wrap.append(hintTake, hintBuy);
+  }
+
+  // ── card itself ──────────────────────────────────────────
   const card=document.createElement('div');
   card.className='card'+(it.done?' done-card':'');
-  card.id='c'+it.id;
   if(newItemNames.has(it.name)){
-    card.style.animation='si .25s cubic-bezier(.34,1.56,.64,1) forwards';
+    wrap.style.animation='si .25s cubic-bezier(.34,1.56,.64,1) forwards';
   }
   const main=document.createElement('div'); main.className='card-main';
   const icon=document.createElement('div'); icon.className='card-icon'; icon.textContent=em(it.name);
@@ -446,7 +496,7 @@ function createCard(it){
   info.appendChild(sub);
   const delBtn=document.createElement('button');
   delBtn.className='card-del'; delBtn.textContent='✕';
-  delBtn.addEventListener('click',()=>delIt(it.id));
+  delBtn.addEventListener('click', e => { e.stopPropagation(); delIt(it.id); });
   main.append(icon, info, delBtn);
   card.appendChild(main);
   if(!it.done){
@@ -460,7 +510,93 @@ function createCard(it){
     }
     card.appendChild(acts);
   }
-  return card;
+  wrap.appendChild(card);
+
+  // ── swipe logic (only for non-done items) ───────────────
+  if (!it.done) {
+    const THRESHOLD = 80;  // px to trigger action
+    const MAX_DRAG  = 130; // px max drag
+    let startX = 0, startY = 0, dx = 0, dragging = false, locked = false;
+
+    function onStart(e) {
+      if (locked) return;
+      const t = e.touches ? e.touches[0] : e;
+      startX = t.clientX; startY = t.clientY; dx = 0; dragging = false;
+      card.style.transition = 'none';
+    }
+
+    function onMove(e) {
+      if (locked) return;
+      const t = e.touches ? e.touches[0] : e;
+      const cx = t.clientX - startX;
+      const cy = t.clientY - startY;
+      // ignore if primarily vertical scroll
+      if (!dragging && Math.abs(cy) > Math.abs(cx) + 5) return;
+      if (!dragging && Math.abs(cx) > 8) { dragging = true; }
+      if (!dragging) return;
+      e.preventDefault();
+      // resist past MAX_DRAG with rubber band
+      dx = cx > 0
+        ? Math.min(cx, MAX_DRAG + (cx - MAX_DRAG) * 0.15)
+        : Math.max(cx, -(MAX_DRAG + (-cx - MAX_DRAG) * 0.15));
+      card.style.transform = `translateX(${dx}px)`;
+      // reveal hints
+      if (dx > 12)       { wrap.classList.add('reveal-take');   wrap.classList.remove('reveal-buy'); }
+      else if (dx < -12) { wrap.classList.add('reveal-buy');    wrap.classList.remove('reveal-take'); }
+      else               { wrap.classList.remove('reveal-take','reveal-buy'); }
+      // color card edge as it approaches threshold
+      const progress = Math.min(Math.abs(dx) / THRESHOLD, 1);
+      if (dx > 0) {
+        card.style.boxShadow = `inset 4px 0 0 rgba(245,158,11,${progress * .7})`;
+      } else if (dx < 0) {
+        card.style.boxShadow = `inset -4px 0 0 rgba(16,185,129,${progress * .7})`;
+      } else {
+        card.style.boxShadow = '';
+      }
+    }
+
+    function onEnd() {
+      if (!dragging || locked) { dx = 0; return; }
+      dragging = false;
+      card.style.transition = '';
+      card.style.boxShadow = '';
+      wrap.classList.remove('reveal-take', 'reveal-buy');
+
+      if (dx >= THRESHOLD) {
+        // swipe right → Бяру
+        locked = true;
+        card.style.transform = `translateX(${MAX_DRAG}px)`;
+        setTimeout(() => {
+          card.style.transition = 'transform .3s cubic-bezier(.34,1.56,.64,1)';
+          card.style.transform = 'translateX(0)';
+          setTimeout(() => { card.style.transform=''; locked=false; }, 320);
+        }, 120);
+        tg?.HapticFeedback?.impactOccurred('medium');
+        takeIt(it.id);
+      } else if (dx <= -THRESHOLD) {
+        // swipe left → Купіў
+        locked = true;
+        card.style.transform = `translateX(-${MAX_DRAG}px)`;
+        setTimeout(() => {
+          card.style.transition = 'transform .3s cubic-bezier(.34,1.56,.64,1)';
+          card.style.transform = 'translateX(0)';
+          setTimeout(() => { locked=false; }, 320);
+        }, 60);
+        tg?.HapticFeedback?.notificationOccurred('success');
+        buyIt(it.id);
+      } else {
+        // snap back
+        card.style.transform = 'translateX(0)';
+      }
+      dx = 0;
+    }
+
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove',  onMove,  { passive: false });
+    card.addEventListener('touchend',   onEnd,   { passive: true });
+  }
+
+  return wrap;
 }
 
 function renderExpenses(){
@@ -610,7 +746,8 @@ async function submitTags() {
 async function addItem() { await submitTags(); }
 
 function animateCard(id, anim, delay=320) {
-  const card = document.getElementById('c'+id);
+  const wrap = document.getElementById('c'+id);
+  const card = wrap ? wrap.querySelector('.card') : null;
   if (!card) return Promise.resolve();
   return new Promise(resolve => {
     card.style.animation = anim;
@@ -748,6 +885,19 @@ async function saveSetting(key, value){
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 loadItems();
+
+// Show swipe hint once per session
+(function showSwipeHint() {
+  if (sessionStorage.getItem('swipe_hint_shown')) return;
+  const eduEl = document.getElementById('swipe-edu');
+  setTimeout(() => {
+    eduEl.classList.add('show');
+    setTimeout(() => {
+      eduEl.classList.remove('show');
+      sessionStorage.setItem('swipe_hint_shown', '1');
+    }, 3200);
+  }, 1400);
+})();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error:', e));
