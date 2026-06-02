@@ -81,8 +81,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
   overflow:hidden;animation:none}
 @keyframes si{from{opacity:0;transform:translateY(-7px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes card-take{0%{transform:none}30%{transform:scale(1.02);background:rgba(245,158,11,.15)}100%{transform:none}}
-@keyframes card-buy{0%{transform:none;opacity:1}40%{transform:scale(1.03);opacity:1;box-shadow:0 0 0 3px var(--g)}100%{transform:translateY(6px) scale(.96);opacity:0}}
-@keyframes card-del{0%{transform:none;opacity:1}100%{transform:translateX(60px);opacity:0}}
+@keyframes card-buy-fade{0%{opacity:1;transform:none}40%{opacity:1;transform:scale(1.02);box-shadow:0 0 0 3px var(--g)}100%{opacity:0;transform:scale(.98)}}
+@keyframes card-del-fade{0%{opacity:1;transform:none}100%{opacity:0;transform:translateX(32px)}}
 .card.done-card{opacity:.45}
 .card-main{display:flex;align-items:center;gap:11px;padding:13px 13px 9px}
 .card-icon{width:42px;height:42px;border-radius:13px;background:var(--secondary);
@@ -609,13 +609,46 @@ async function submitTags() {
 
 async function addItem() { await submitTags(); }
 
-function animateCard(id, anim, delay=320) {
+function animateCard(id, type) {
   const card = document.getElementById('c'+id);
   if (!card) return Promise.resolve();
+
   return new Promise(resolve => {
-    card.style.animation = anim;
     card.style.pointerEvents = 'none';
-    setTimeout(resolve, delay);
+    const h = card.offsetHeight;
+
+    if (type === 'take') {
+      // просто пульс — карточка остаётся
+      card.style.animation = 'card-take .4s ease forwards';
+      setTimeout(resolve, 400);
+      return;
+    }
+
+    // фаза 1: fade out карточки (buy или del)
+    card.style.transition = 'opacity .22s ease, transform .22s ease, box-shadow .22s ease';
+    if (type === 'buy') {
+      card.style.boxShadow = '0 0 0 3px var(--g)';
+      card.style.transform = 'scale(1.02)';
+      setTimeout(() => {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.97)';
+      }, 140);
+    } else {
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(28px)';
+    }
+
+    // фаза 2: collapse высоты — нижние карточки плавно подъезжают
+    setTimeout(() => {
+      card.style.transition = 'max-height .28s cubic-bezier(.4,0,.2,1), margin-bottom .28s, padding .28s, opacity .1s';
+      card.style.overflow = 'hidden';
+      card.style.maxHeight = h + 'px';
+      // форсируем reflow
+      card.offsetHeight;
+      card.style.maxHeight = '0';
+      card.style.marginBottom = '0';
+      setTimeout(resolve, 290);
+    }, type === 'buy' ? 320 : 200);
   });
 }
 
@@ -637,7 +670,7 @@ async function takeIt(id){
   items = items.map(i => i.id===id ? {...i, taken_by: ME} : i);
   renderList();
   tg?.HapticFeedback?.impactOccurred('medium');
-  animateCard(id, 'card-take .4s ease forwards', 400);
+  animateCard(id, 'take');
   api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME})
     .then(() => notify('take', name))
     .catch(() => toastRetry('⚠️ Не атрымалася ўзяць. ', () => takeIt(id)));
@@ -652,7 +685,7 @@ async function releaseIt(id){
 
 async function buyIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
-  await animateCard(id, 'card-buy .4s ease forwards', 380);
+  await animateCard(id, 'buy');
   items = items.map(i => i.id===id ? {...i, done: true, taken_by: ME} : i);
   renderList();
   tg?.HapticFeedback?.notificationOccurred('success');
@@ -664,7 +697,7 @@ async function buyIt(id){
 
 async function delIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
-  await animateCard(id, 'card-del .28s ease forwards', 260);
+  await animateCard(id, 'del');
   items = items.filter(i => i.id !== id);
   renderList();
   api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id})
