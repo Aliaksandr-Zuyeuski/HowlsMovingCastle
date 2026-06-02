@@ -9,7 +9,10 @@ from http.server import BaseHTTPRequestHandler
 import database as db
 from auth import verify_init_data, AuthError
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
+WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "")
+BOT_APP_NAME = os.getenv("BOT_APP_NAME", "app")
 
 
 class handler(BaseHTTPRequestHandler):
@@ -40,11 +43,12 @@ class handler(BaseHTTPRequestHandler):
 
         data = self._body()
 
-        chat_id = data.get("chat_id")
-        action  = data.get("action", "")
-        name    = data.get("name", "")
-        amount  = data.get("amount", "")
-        actor   = data.get("user", "Удзельнік")
+        chat_id        = data.get("chat_id")
+        group_chat_id  = data.get("group_chat_id")
+        action         = data.get("action", "")
+        name           = data.get("name", "")
+        amount         = data.get("amount", "")
+        actor          = data.get("user", "Удзельнік")
 
         if not chat_id or not action:
             self._json({"ok": False, "error": "missing fields"})
@@ -56,7 +60,7 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "skipped": True})
             return
 
-        # Для добавления — если несколько товаров через запятую, делаем список
+        # Для добавления — если несколько товаров, делаем список
         if action == "add":
             items = [i.strip() for i in name.split(",") if i.strip()]
             if len(items) > 1:
@@ -77,15 +81,41 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "unknown action"})
             return
 
-        payload = json.dumps({
+        # Кнопка "Адкрыць спіс" — как в webhook.py
+        # В группе: t.me/bot/app?startapp=gCHATID (url кнопка)
+        # В личке:  web_app кнопка с WEBAPP_URL
+        reply_markup = None
+        target_id = group_chat_id or chat_id
+        is_group = str(target_id).startswith("-")
+
+        if is_group and BOT_USERNAME and BOT_APP_NAME:
+            start_param = "g" + str(target_id).lstrip("-")
+            reply_markup = {
+                "inline_keyboard": [[{
+                    "text": "🛒 Адкрыць спіс",
+                    "url": f"https://t.me/{BOT_USERNAME}/{BOT_APP_NAME}?startapp={start_param}"
+                }]]
+            }
+        elif WEBAPP_URL:
+            url = f"{WEBAPP_URL}?user_id={chat_id}"
+            reply_markup = {
+                "inline_keyboard": [[{
+                    "text": "🛒 Адкрыць спіс",
+                    "web_app": {"url": url}
+                }]]
+            }
+
+        payload = {
             "chat_id": chat_id,
             "text": msg_text,
             "parse_mode": "Markdown"
-        }).encode()
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
 
         req = urllib.request.Request(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            data=payload,
+            data=json.dumps(payload).encode(),
             headers={"Content-Type": "application/json"},
             method="POST"
         )
