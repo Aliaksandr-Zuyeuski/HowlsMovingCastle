@@ -159,6 +159,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
   background:#111827;color:#fff;padding:10px 20px;border-radius:20px;
   font-size:13px;font-weight:700;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap;z-index:200}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.show.has-retry{pointer-events:auto}
+#toast-retry{text-decoration:underline;cursor:pointer;opacity:.85;margin-left:6px}
 .spinner{text-align:center;padding:40px;color:var(--hint);font-size:13px;font-weight:600}
 </style>
 </head>
@@ -619,55 +621,76 @@ function animateCard(id, anim, delay=320) {
   });
 }
 
+// тост с кнопкой "Паўтарыць" — не мигаем, даём пользователю решить
+function toastRetry(msg, retryFn) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg + '<span id="toast-retry">Паўтарыць</span>';
+  t.classList.add('show', 'has-retry');
+  clearTimeout(t._t);
+  document.getElementById('toast-retry').onclick = () => {
+    t.classList.remove('show', 'has-retry');
+    retryFn();
+  };
+  t._t = setTimeout(() => t.classList.remove('show', 'has-retry'), 4000);
+}
+
 async function takeIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
-  // оптимистично
   items = items.map(i => i.id===id ? {...i, taken_by: ME} : i);
   renderList();
   tg?.HapticFeedback?.impactOccurred('medium');
-  // анимация на обновлённой карточке
   animateCard(id, 'card-take .4s ease forwards', 400);
-  // запрос фоном
   api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME})
-    .then(() => { notify('take', name); loadItems(); })
-    .catch(() => { loadItems(); });
+    .then(() => notify('take', name))
+    .catch(() => toastRetry('⚠️ Не атрымалася ўзяць. ', () => takeIt(id)));
 }
 
 async function releaseIt(id){
   items = items.map(i => i.id===id ? {...i, taken_by: null} : i);
   renderList();
   api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id})
-    .then(() => loadItems())
-    .catch(() => loadItems());
+    .catch(() => toastRetry('⚠️ Памылка. ', () => releaseIt(id)));
 }
 
 async function buyIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
-  // анимация сразу
   await animateCard(id, 'card-buy .4s ease forwards', 380);
-  // оптимистично убираем из списка
   items = items.map(i => i.id===id ? {...i, done: true, taken_by: ME} : i);
   renderList();
   tg?.HapticFeedback?.notificationOccurred('success');
   toast('Куплена: '+name+' 🎉');
-  // запрос фоном
   api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME})
-    .then(() => { notify('bought', name); loadItems(); })
-    .catch(() => loadItems());
+    .then(() => notify('bought', name))
+    .catch(() => toastRetry('⚠️ Не атрымалася купіць. ', () => buyIt(id)));
 }
 
 async function delIt(id){
   const name = items.find(i=>i.id===id)?.name||'';
-  // анимация сразу
   await animateCard(id, 'card-del .28s ease forwards', 260);
-  // оптимистично убираем
   items = items.filter(i => i.id !== id);
   renderList();
-  // запрос фоном
   api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id})
-    .then(() => { notify('delete', name); loadItems(); })
-    .catch(() => loadItems());
+    .then(() => notify('delete', name))
+    .catch(() => toastRetry('⚠️ Не атрымалася выдаліць. ', () => delIt(id)));
 }
+
+// тихий polling — синхронизирует список каждые 12 сек без перерисовки если ничего не изменилось
+function startPolling() {
+  setInterval(async () => {
+    try {
+      const fresh = await api(`/api/items?chat_id=${CHAT_ID}`);
+      if (JSON.stringify(fresh) !== JSON.stringify(items)) {
+        items = fresh;
+        renderList();
+      }
+    } catch(e) {}
+  }, 12000);
+}
+
+// при возврате из фона — сразу синхронизируем
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') loadItems();
+});
 
 async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
@@ -748,6 +771,7 @@ async function saveSetting(key, value){
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 loadItems();
+startPolling();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error:', e));
