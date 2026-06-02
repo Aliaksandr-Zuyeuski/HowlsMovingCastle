@@ -584,10 +584,8 @@ async function submitTags() {
   document.getElementById('add-submit').style.background = 'var(--btn)';
   updateTagUI();
 
-  // добавляем все товары
-  for (const name of tags) {
-    await api(`/api/items?chat_id=${CHAT_ID}&action=add`, 'POST', {name, added_by: ME});
-  }
+  // один батч-запрос, names — массив
+  await api(`/api/items?chat_id=${CHAT_ID}&action=add`, 'POST', {names: tags, added_by: ME});
 
   if (wasBuyMode) {
     // перезагружаем список чтобы получить id только что добавленных
