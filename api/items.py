@@ -53,7 +53,7 @@ class handler(BaseHTTPRequestHandler):
         action = qs.get("action", ["add"])[0]
 
         if action == "add":
-            names = [n.strip() for n in data.get("name","").split(",") if n.strip()]
+            names = [n.strip() for n in data.get("names", []) if n.strip()]
             db.add_items(chat_id, names, data.get("added_by", "?"))
             self._json({"ok": True, "names": names})
 
