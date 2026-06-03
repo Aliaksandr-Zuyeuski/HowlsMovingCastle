@@ -81,29 +81,27 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "unknown action"})
             return
 
-        # Кнопка "Адкрыць спіс" — как в webhook.py
-        # В группе: t.me/bot/app?startapp=gCHATID (url кнопка)
-        # В личке:  web_app кнопка с WEBAPP_URL
+        # Кнопка "Адкрыць спіс" — только для добавления товара
         reply_markup = None
-        target_id = group_chat_id or chat_id
-        is_group = str(target_id).startswith("-")
+        if action == "add":
+            target_id = group_chat_id or chat_id
+            is_group = str(target_id).startswith("-")
 
-        if is_group and BOT_USERNAME and BOT_APP_NAME:
-            start_param = "g" + str(target_id).lstrip("-")
-            reply_markup = {
-                "inline_keyboard": [[{
-                    "text": "🛒 Адкрыць спіс",
-                    "url": f"https://t.me/{BOT_USERNAME}/{BOT_APP_NAME}?startapp={start_param}"
-                }]]
-            }
-        elif WEBAPP_URL:
-            url = f"{WEBAPP_URL}?user_id={chat_id}"
-            reply_markup = {
-                "inline_keyboard": [[{
-                    "text": "🛒 Адкрыць спіс",
-                    "web_app": {"url": url}
-                }]]
-            }
+            if is_group and BOT_USERNAME and BOT_APP_NAME:
+                start_param = "g" + str(target_id).lstrip("-")
+                reply_markup = {
+                    "inline_keyboard": [[{
+                        "text": "🛒 Адкрыць спіс",
+                        "url": f"https://t.me/{BOT_USERNAME}/{BOT_APP_NAME}?startapp={start_param}"
+                    }]]
+                }
+            elif WEBAPP_URL:
+                reply_markup = {
+                    "inline_keyboard": [[{
+                        "text": "🛒 Адкрыць спіс",
+                        "web_app": {"url": f"{WEBAPP_URL}?user_id={chat_id}"}
+                    }]]
+                }
 
         payload = {
             "chat_id": chat_id,
