@@ -78,8 +78,11 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
 .list{padding:9px 12px;display:flex;flex-direction:column;gap:7px}
 .sec-label{font-size:10px;font-weight:900;color:var(--hint);letter-spacing:.8px;text-transform:uppercase;padding:5px 2px 0}
 .card{background:var(--bg);border-radius:var(--rad);box-shadow:var(--shadow);
-  overflow:hidden;animation:si .2s cubic-bezier(.34,1.56,.64,1) forwards}
+  overflow:hidden;animation:none}
 @keyframes si{from{opacity:0;transform:translateY(-7px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes card-take{0%{transform:none}30%{transform:scale(1.02);background:rgba(245,158,11,.15)}100%{transform:none}}
+@keyframes card-buy-fade{0%{opacity:1;transform:none}40%{opacity:1;transform:scale(1.02);box-shadow:0 0 0 3px var(--g)}100%{opacity:0;transform:scale(.98)}}
+@keyframes card-del-fade{0%{opacity:1;transform:none}100%{opacity:0;transform:translateX(32px)}}
 .card.done-card{opacity:.45}
 .card-main{display:flex;align-items:center;gap:11px;padding:13px 13px 9px}
 .card-icon{width:42px;height:42px;border-radius:13px;background:var(--secondary);
@@ -156,6 +159,8 @@ body{font-family:var(--font);background:var(--secondary);color:var(--text);
   background:#111827;color:#fff;padding:10px 20px;border-radius:20px;
   font-size:13px;font-weight:700;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap;z-index:200}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.show.has-retry{pointer-events:auto}
+#toast-retry{text-decoration:underline;cursor:pointer;opacity:.85;margin-left:6px}
 .spinner{text-align:center;padding:40px;color:var(--hint);font-size:13px;font-weight:600}
 </style>
 </head>
@@ -320,7 +325,7 @@ const API = window.location.origin;
 
 console.log('WebApp init:', { ME, USER_ID, GROUP_CHAT_ID, CHAT_ID, tgUser: tg?.initDataUnsafe?.user });
 
-let items = [], expenses = [], filter = 'all';
+let items = [], expenses = [], filter = 'all', newItemNames = new Set();
 
 const EM = {
   mleko:'🥛',chleb:'🍞',masło:'🧈',maslo:'🧈',jajka:'🥚',ser:'🧀',
@@ -423,6 +428,9 @@ function createCard(it){
   const card=document.createElement('div');
   card.className='card'+(it.done?' done-card':'');
   card.id='c'+it.id;
+  if(newItemNames.has(it.name)){
+    card.style.animation='si .25s cubic-bezier(.34,1.56,.64,1) forwards';
+  }
   const main=document.createElement('div'); main.className='card-main';
   const icon=document.createElement('div'); icon.className='card-icon'; icon.textContent=em(it.name);
   const info=document.createElement('div'); info.className='card-info';
@@ -576,10 +584,8 @@ async function submitTags() {
   document.getElementById('add-submit').style.background = 'var(--btn)';
   updateTagUI();
 
-  // добавляем все товары
-  for (const name of tags) {
-    await api(`/api/items?chat_id=${CHAT_ID}&action=add`, 'POST', {name, added_by: ME});
-  }
+  // один батч-запрос, names — массив
+  await api(`/api/items?chat_id=${CHAT_ID}&action=add`, 'POST', {names: tags, added_by: ME});
 
   if (wasBuyMode) {
     // перезагружаем список чтобы получить id только что добавленных
@@ -589,19 +595,154 @@ async function submitTags() {
       if (item) await api(`/api/items?chat_id=${CHAT_ID}&action=buy`, 'POST', {id: item.id, user: ME});
     }
     notify('bought', tags.join(', '));
+    tg?.HapticFeedback?.notificationOccurred('success');
     toast(tags.length > 1 ? `Куплена ${tags.length} тавары ✅` : `Куплена: ${tags[0]} ✅`);
   } else {
     notify('add', tags.join(', '));
+    tg?.HapticFeedback?.impactOccurred('light');
     toast(tags.length > 1 ? `Дадана ${tags.length} тавары 🛒` : `Дадана: ${tags[0]}`);
   }
+  tags.forEach(n => newItemNames.add(n));
   await loadItems();
+  newItemNames.clear();
 }
 
 async function addItem() { await submitTags(); }
-async function takeIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME}); notify('take',items.find(i=>i.id===id)?.name||''); await loadItems(); }
-async function releaseIt(id){ await api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id}); await loadItems(); }
-async function buyIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME}); notify('bought',name); toast('Куплена: '+name+' 🎉'); await loadItems(); }
-async function delIt(id){ const name=items.find(i=>i.id===id)?.name||''; await api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id}); notify('delete',name); await loadItems(); }
+
+function animateCard(id, type) {
+  const card = document.getElementById('c'+id);
+  if (!card) return Promise.resolve();
+
+  return new Promise(resolve => {
+    card.style.pointerEvents = 'none';
+    const h = card.offsetHeight;
+
+    if (type === 'take') {
+      // пульс оранжевым → потом схлопывается
+      card.style.transition = 'transform .15s ease, box-shadow .15s ease';
+      card.style.transform = 'scale(1.02)';
+      card.style.boxShadow = '0 0 0 3px var(--o)';
+      setTimeout(() => {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.98)';
+        card.style.transition = 'opacity .18s ease, transform .18s ease';
+      }, 150);
+      setTimeout(() => {
+        card.style.transition = 'max-height .26s cubic-bezier(.4,0,.2,1), margin-bottom .26s, opacity .1s';
+        card.style.overflow = 'hidden';
+        card.style.maxHeight = h + 'px';
+        card.offsetHeight;
+        card.style.maxHeight = '0';
+        card.style.marginBottom = '0';
+        setTimeout(resolve, 270);
+      }, 300);
+      return;
+    }
+
+    // фаза 1: fade out карточки (buy или del)
+    card.style.transition = 'opacity .22s ease, transform .22s ease, box-shadow .22s ease';
+    if (type === 'buy') {
+      card.style.boxShadow = '0 0 0 3px var(--g)';
+      card.style.transform = 'scale(1.02)';
+      setTimeout(() => {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.97)';
+      }, 140);
+    } else {
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(28px)';
+    }
+
+    // фаза 2: collapse высоты — нижние карточки плавно подъезжают
+    setTimeout(() => {
+      card.style.transition = 'max-height .28s cubic-bezier(.4,0,.2,1), margin-bottom .28s, padding .28s, opacity .1s';
+      card.style.overflow = 'hidden';
+      card.style.maxHeight = h + 'px';
+      // форсируем reflow
+      card.offsetHeight;
+      card.style.maxHeight = '0';
+      card.style.marginBottom = '0';
+      setTimeout(resolve, 290);
+    }, type === 'buy' ? 320 : 200);
+  });
+}
+
+// тост с кнопкой "Паўтарыць" — не мигаем, даём пользователю решить
+function toastRetry(msg, retryFn) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg + '<span id="toast-retry">Паўтарыць</span>';
+  t.classList.add('show', 'has-retry');
+  clearTimeout(t._t);
+  document.getElementById('toast-retry').onclick = () => {
+    t.classList.remove('show', 'has-retry');
+    retryFn();
+  };
+  t._t = setTimeout(() => t.classList.remove('show', 'has-retry'), 4000);
+}
+
+async function takeIt(id){
+  const name = items.find(i=>i.id===id)?.name||'';
+  tg?.HapticFeedback?.impactOccurred('medium');
+  // схлопываем старую карточку
+  await animateCard(id, 'take');
+  // обновляем список — новая карточка появится в блоке "Нехта бярэ"
+  items = items.map(i => i.id===id ? {...i, taken_by: ME} : i);
+  newItemNames.add(name);
+  renderList();
+  newItemNames.clear();
+  api(`/api/items?chat_id=${CHAT_ID}&action=take`,'POST',{id,user:ME})
+    .then(() => notify('take', name))
+    .catch(() => toastRetry('⚠️ Не атрымалася ўзяць. ', () => takeIt(id)));
+}
+
+async function releaseIt(id){
+  tg?.HapticFeedback?.impactOccurred('light');
+  items = items.map(i => i.id===id ? {...i, taken_by: null} : i);
+  renderList();
+  api(`/api/items?chat_id=${CHAT_ID}&action=release`,'POST',{id})
+    .catch(() => toastRetry('⚠️ Памылка. ', () => releaseIt(id)));
+}
+
+async function buyIt(id){
+  const name = items.find(i=>i.id===id)?.name||'';
+  await animateCard(id, 'buy');
+  items = items.map(i => i.id===id ? {...i, done: true, taken_by: ME} : i);
+  renderList();
+  tg?.HapticFeedback?.notificationOccurred('success');
+  toast('Куплена: '+name+' 🎉');
+  api(`/api/items?chat_id=${CHAT_ID}&action=buy`,'POST',{id,user:ME})
+    .then(() => notify('bought', name))
+    .catch(() => toastRetry('⚠️ Не атрымалася купіць. ', () => buyIt(id)));
+}
+
+async function delIt(id){
+  const name = items.find(i=>i.id===id)?.name||'';
+  tg?.HapticFeedback?.impactOccurred('rigid');
+  await animateCard(id, 'del');
+  items = items.filter(i => i.id !== id);
+  renderList();
+  api(`/api/items?chat_id=${CHAT_ID}&action=delete`,'POST',{id})
+    .then(() => notify('delete', name))
+    .catch(() => toastRetry('⚠️ Не атрымалася выдаліць. ', () => delIt(id)));
+}
+
+// тихий polling — синхронизирует список каждые 12 сек без перерисовки если ничего не изменилось
+function startPolling() {
+  setInterval(async () => {
+    try {
+      const fresh = await api(`/api/items?chat_id=${CHAT_ID}`);
+      if (JSON.stringify(fresh) !== JSON.stringify(items)) {
+        items = fresh;
+        renderList();
+      }
+    } catch(e) {}
+  }, 12000);
+}
+
+// при возврате из фона — сразу синхронизируем
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') loadItems();
+});
 
 async function loadExpenses(){
   expenses=await api(`/api/expenses?chat_id=${CHAT_ID}`);
@@ -682,10 +823,18 @@ async function saveSetting(key, value){
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 loadItems();
+startPolling();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error:', e));
 }
 </script>
+
+<!-- 
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+    eruda.init();
+</script>
+-->
 </body>
 </html>
