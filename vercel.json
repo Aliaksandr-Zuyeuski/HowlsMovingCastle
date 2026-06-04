@@ -16,6 +16,6 @@
     { "source": "/api/expenses", "destination": "/api/expenses.py" },
     { "source": "/api/notify",   "destination": "/api/notify.py" },
     { "source": "/api/settings", "destination": "/api/settings.py" },
-    { "source": "/(.*)",         "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
