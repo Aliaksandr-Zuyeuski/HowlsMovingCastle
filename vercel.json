@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "bash build.sh",
   "builds": [
+    { "src": "build.sh", "use": "@vercel/node", "config": { "shell": "/bin/bash" } },
     { "src": "api/*.py", "use": "@vercel/python" }
   ],
   "routes": [
