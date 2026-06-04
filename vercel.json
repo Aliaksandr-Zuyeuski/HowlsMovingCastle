@@ -2,8 +2,7 @@
   "version": 2,
   "buildCommand": "cd webapp && npm install && npm run build",
   "builds": [
-    { "src": "api/*.py", "use": "@vercel/python" },
-    { "src": "webapp_dist/**", "use": "@vercel/static" }
+    { "src": "api/*.py", "use": "@vercel/python" }
   ],
   "routes": [
     { "src": "/api/webhook",  "dest": "/api/webhook.py" },
@@ -11,6 +10,6 @@
     { "src": "/api/expenses", "dest": "/api/expenses.py" },
     { "src": "/api/notify",   "dest": "/api/notify.py" },
     { "src": "/api/settings", "dest": "/api/settings.py" },
-    { "src": "/(.*)",         "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "/webapp_dist/$1" }
   ]
 }
