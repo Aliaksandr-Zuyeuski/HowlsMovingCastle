@@ -1,78 +1,119 @@
-# 🛒 Кошык — Telegram мини-приложение для совместных покупок
+# 🛒 Кошык — Telegram Mini App для сумесных пакупак
 
-Бот и мини-приложение для ведения общего списка покупок в Telegram-группе.  
-Интерфейс на **белорусском языке**. Деплой на Vercel + Supabase (оба бесплатно).
+Бот і міні-праграма для вядзення агульнага спіса пакупак у Telegram-групе.  
+Інтэрфейс на **беларускай мове**. Дэплой на Vercel + Supabase (абодва бясплатна).
 
-## Возможности
+## Стэк
 
-- 📋 Общий список товаров для группы
-- 🙋 Взять товар на себя — другие видят, кто что берёт
-- ✅ Отмечать купленное
-- 💰 Учёт расходов и автоматический баланс — кто сколько должен
-- 🔔 Push-уведомления в группу при каждом действии (настраиваются)
-- ⚙️ Управление уведомлениями прямо из приложения
+| Слой | Тэхналогія |
+|------|-----------|
+| Frontend | React 18 + Vite |
+| Backend | Python (Vercel Serverless Functions) |
+| База даных | PostgreSQL (Supabase) |
+| Хостынг | Vercel |
 
-## Структура файлов
+## Магчымасці
+
+- 📋 Агульны спіс тавараў для групы
+- 🙋 Узяць тавар — іншыя бачаць хто што бярэ
+- ✅ Адзначаць купленае з анімацыяй collapse + fade
+- 💰 Улік выдаткаў і аўтаматычны баланс
+- 🔔 Push-апавяшчэнні ў групу пры кожным дзеянні
+- ⚙️ Кіраванне апавяшчэннямі прама з праграмы
+- 🛒 Кнопка адкрыцця спіса ў апавяшчэнні аб даданні тавара
+
+## Структура праекта
 
 ```
 ├── api/
-│   ├── webhook.py    ← Telegram бот (обработка /start, уведомления)
-│   ├── items.py      ← API списка покупок
-│   ├── expenses.py   ← API расходов и баланса
-│   ├── notify.py     ← отправка уведомлений в группу
-│   └── settings.py   ← API настроек уведомлений
-├── webapp.html       ← мини-приложение (весь UI)
-├── database.py       ← работа с PostgreSQL (Supabase)
-├── auth.py           ← проверка Telegram initData
-├── requirements.txt  ← зависимости Python
-└── vercel.json       ← настройки Vercel
+│   ├── webhook.py      ← Telegram бот (/start, deep link)
+│   ├── items.py        ← API спіса пакупак
+│   ├── expenses.py     ← API выдаткаў і балансу
+│   ├── notify.py       ← адпраўка апавяшчэнняў у групу
+│   └── settings.py     ← API налад апавяшчэнняў
+├── webapp/
+│   ├── index.html      ← кропка ўваходу
+│   ├── vite.config.js  ← налады Vite
+│   ├── package.json
+│   └── src/
+│       ├── main.jsx        ← createRoot(<App />)
+│       ├── App.jsx         ← навігацыя + роўтынг старонак
+│       ├── index.css       ← усе стылі
+│       ├── tg.js           ← Telegram кантэкст, haptic
+│       ├── api.js          ← усе запыты да бэка
+│       ├── utils.js        ← em(), fmtDate()
+│       ├── components/
+│       │   ├── ShoppingList.jsx
+│       │   ├── Card.jsx
+│       │   ├── TagInput.jsx
+│       │   ├── Expenses.jsx
+│       │   ├── Balance.jsx
+│       │   ├── Settings.jsx
+│       │   └── Toast.jsx
+│       └── hooks/
+│           └── useToast.js
+├── database.py         ← праца з PostgreSQL
+├── auth.py             ← праверка Telegram initData
+├── requirements.txt    ← залежнасці Python
+└── vercel.json         ← налады Vercel
 ```
 
-## Шаг 1 — Supabase (база данных)
+## Крок 1 — Supabase (база даных)
 
-1. Зайти на [supabase.com](https://supabase.com) → Sign up через GitHub
-2. New Project → придумать название и пароль
+1. Зайсці на [supabase.com](https://supabase.com) → Sign up праз GitHub
+2. New Project → прыдумаць назву і пароль
 3. Settings → Database → Connection string → URI
-4. Скопировать строку вида:
+4. Скапіраваць радок выгляду:
    ```
    postgresql://postgres:[ПАРОЛЬ]@db.xxxx.supabase.co:5432/postgres
    ```
 
-## Шаг 2 — Telegram Bot
+## Крок 2 — Telegram Bot
 
-1. Написать [@BotFather](https://t.me/BotFather) → `/newbot`
-2. Сохранить токен
-3. `/newapp` → привязать мини-приложение к боту (понадобится после деплоя)
+1. Напісаць [@BotFather](https://t.me/BotFather) → `/newbot`
+2. Захаваць токен
+3. `/newapp` → прывязаць міні-праграму да бота (спатрэбіцца пасля дэплою)
 
-## Шаг 3 — Vercel (хостинг)
+## Крок 3 — Vercel (хостынг)
 
-1. Залить все файлы в GitHub репозиторий
-2. Зайти на [vercel.com](https://vercel.com) → New Project → Import из GitHub
-3. В Settings → Environment Variables добавить:
+1. Заліць файлы ў GitHub рэпазіторый
+2. Зайсці на [vercel.com](https://vercel.com) → New Project → Import з GitHub
+3. У Settings → Environment Variables дадаць:
 
-   | Переменная     | Значение                                      |
-   |----------------|-----------------------------------------------|
-   | `BOT_TOKEN`    | токен от BotFather                            |
-   | `DATABASE_URL` | строка подключения от Supabase                |
-   | `WEBAPP_URL`   | `https://ВАШ_ПРОЕКТ.vercel.app`              |
+   | Зменная          | Значэнне                                  |
+   |------------------|-------------------------------------------|
+   | `BOT_TOKEN`      | токен ад BotFather                        |
+   | `BOT_USERNAME`   | username бота без @                       |
+   | `BOT_APP_NAME`   | назва міні-праграмы ад BotFather          |
+   | `DATABASE_URL`   | радок падключэння ад Supabase             |
+   | `WEBAPP_URL`     | `https://ВАШ_ПРАЕКТ.vercel.app`          |
 
 4. Deploy
 
-## Шаг 4 — Подключить webhook
+## Крок 4 — Падключыць webhook
 
-После деплоя открыть в браузере:
+Пасля дэплою адкрыць у браўзеры:
 ```
-https://api.telegram.org/botВАШ_ТОКЕН/setWebhook?url=https://ВАШ_ПРОЕКТ.vercel.app/api/webhook
+https://api.telegram.org/botВАШ_ТОКЕН/setWebhook?url=https://ВАШ_ПРАЕКТ.vercel.app/api/webhook
 ```
 
-## Шаг 5 — Добавить бота в группу
+## Крок 5 — Дадаць бота ў групу
 
-1. Найти бота по username в Telegram
-2. Добавить в нужную группу
-3. Написать `/start` — появится кнопка мини-приложения
+1. Знайсці бота па username у Telegram
+2. Дадаць у патрэбную групу
+3. Напісаць `/start` — з'явіцца кнопка міні-праграмы
 
-## Переезд / смена хостинга
+## Лакальная распрацоўка
 
-Меняются только переменные окружения:
-- `DATABASE_URL` — любой PostgreSQL-совместимый сервис
-- `WEBAPP_URL` — новый адрес деплоя
+```bash
+cd webapp
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # → webapp_dist/
+```
+
+## Пераезд / змена хостынгу
+
+Мяняюцца толькі зменныя асяроддзя:
+- `DATABASE_URL` — любы PostgreSQL-сумяшчальны сэрвіс
+- `WEBAPP_URL` — новы адрас дэплою
