@@ -1,21 +1,16 @@
 {
   "version": 2,
+  "buildCommand": "cd webapp && npm install && npm run build",
   "builds": [
     { "src": "api/*.py", "use": "@vercel/python" },
-    {
-      "src": "webapp/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
+    { "src": "webapp_dist/**", "use": "@vercel/static" }
   ],
-  "rewrites": [
-    { "source": "/api/webhook",  "destination": "/api/webhook.py" },
-    { "source": "/api/items",    "destination": "/api/items.py" },
-    { "source": "/api/expenses", "destination": "/api/expenses.py" },
-    { "source": "/api/notify",   "destination": "/api/notify.py" },
-    { "source": "/api/settings", "destination": "/api/settings.py" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/webhook",  "dest": "/api/webhook.py" },
+    { "src": "/api/items",    "dest": "/api/items.py" },
+    { "src": "/api/expenses", "dest": "/api/expenses.py" },
+    { "src": "/api/notify",   "dest": "/api/notify.py" },
+    { "src": "/api/settings", "dest": "/api/settings.py" },
+    { "src": "/(.*)",         "dest": "/webapp_dist/$1" }
   ]
 }
