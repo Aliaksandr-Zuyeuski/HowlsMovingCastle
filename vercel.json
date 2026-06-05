@@ -4,7 +4,7 @@
   "outputDirectory": "webapp_dist",
   "functions": {
     "api/*.py": {
-      "runtime": "vercel-python@3.0.7"
+      "runtime": "@vercel/python"
     }
   },
   "routes": [
