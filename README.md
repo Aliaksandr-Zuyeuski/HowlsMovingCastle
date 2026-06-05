@@ -117,3 +117,4 @@ npm run build    # → webapp_dist/
 Мяняюцца толькі зменныя асяроддзя:
 - `DATABASE_URL` — любы PostgreSQL-сумяшчальны сэрвіс
 - `WEBAPP_URL` — новы адрас дэплою
+
