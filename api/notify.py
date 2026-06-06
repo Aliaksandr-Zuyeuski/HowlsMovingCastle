@@ -65,28 +65,52 @@ def build_message(chat_id: int) -> str | None:
 
 
 def update_group_message(chat_id: int):
-    old_msg_id = db.get_list_message_id(chat_id)
+    print(f"[notify] update called for chat_id={chat_id}")
+    lock_key = abs(chat_id) % 2147483647
 
-    if old_msg_id:
-        tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
-        db.set_list_message_id(chat_id, None)
+    try:
+        with db.get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
+                acquired = cur.fetchone()[0]
+            print(f"[notify] lock acquired={acquired}")
+            if not acquired:
+                print(f"[notify] skipped — another instance is updating")
+                return
 
-    text = build_message(chat_id)
-    if not text:
-        return
+            try:
+                old_msg_id = db.get_list_message_id(chat_id)
+                print(f"[notify] old_msg_id={old_msg_id}")
 
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "MarkdownV2",
-    }
-    btn = open_list_button(chat_id)
-    if btn:
-        payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+                if old_msg_id:
+                    r = tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
+                    print(f"[notify] deleteMessage result={r}")
+                    db.set_list_message_id(chat_id, None)
 
-    result = tg("sendMessage", payload)
-    if result.get("ok"):
-        db.set_list_message_id(chat_id, result["result"]["message_id"])
+                text = build_message(chat_id)
+                print(f"[notify] text built, empty={text is None}")
+                if not text:
+                    return
+
+                payload = {
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "MarkdownV2",
+                }
+                btn = open_list_button(chat_id)
+                if btn:
+                    payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+
+                result = tg("sendMessage", payload)
+                print(f"[notify] sendMessage ok={result.get('ok')} err={result.get('description','')}")
+                if result.get("ok"):
+                    db.set_list_message_id(chat_id, result["result"]["message_id"])
+            finally:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
+                print(f"[notify] lock released")
+    except Exception as e:
+        print(f"[notify] exception: {e}")
 
 
 class handler(BaseHTTPRequestHandler):
