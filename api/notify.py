@@ -71,8 +71,8 @@ def update_group_message(chat_id: int):
     try:
         with db.get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
-                acquired = cur.fetchone()[0]
+                cur.execute("SELECT pg_try_advisory_lock(%s) as acquired", (lock_key,))
+                acquired = cur.fetchone()["acquired"]
             print(f"[notify] lock acquired={acquired}")
             if not acquired:
                 print(f"[notify] skipped — another instance is updating")
@@ -108,7 +108,6 @@ def update_group_message(chat_id: int):
             finally:
                 with conn.cursor() as cur:
                     cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
-                print(f"[notify] lock released")
     except Exception as e:
         print(f"[notify] exception: {e}")
 
