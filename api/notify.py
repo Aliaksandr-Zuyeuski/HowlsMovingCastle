@@ -16,7 +16,6 @@ WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
 
 
 def tg(method: str, payload: dict) -> dict:
-    """Вызов Telegram Bot API."""
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{BOT_TOKEN}/{method}",
         data=json.dumps(payload).encode(),
@@ -31,8 +30,7 @@ def tg(method: str, payload: dict) -> dict:
         return {"ok": False}
 
 
-def open_list_button(chat_id: str | int) -> dict:
-    """Кнопка открытия Mini App."""
+def open_list_button(chat_id) -> dict | None:
     cid = str(chat_id)
     if cid.startswith("-") and BOT_USERNAME and BOT_APP_NAME:
         start_param = "g" + cid.lstrip("-")
@@ -43,18 +41,12 @@ def open_list_button(chat_id: str | int) -> dict:
 
 
 def build_message(chat_id: int) -> str | None:
-    """
-    Строит текст сообщения из активных товаров.
-    Группирует по added_by, показывает статус каждого товара.
-    Возвращает None если активных товаров нет.
-    """
     items = db.get_items(chat_id)
     active = [i for i in items if not i["done"]]
     if not active:
         return None
 
-    # Группируем по added_by
-    groups: dict[str, list] = {}
+    groups = {}
     for item in active:
         groups.setdefault(item["added_by"], []).append(item)
 
@@ -64,67 +56,37 @@ def build_message(chat_id: int) -> str | None:
         for item in actor_items:
             name = item["name"]
             if item["taken_by"]:
-                # взято — зачёркнутый текст + оранжевая точка
                 lines.append(f"• ~{name}~ 🟠")
             else:
                 lines.append(f"• {name}")
-        lines.append("")  # пустая строка между группами
+        lines.append("")
 
     return "\n".join(lines).strip()
 
 
 def update_group_message(chat_id: int):
-    """
-    Удаляет старое сообщение, строит новое и отправляет.
-    Использует advisory lock PostgreSQL для предотвращения race condition.
-    """
-    # Берём advisory lock на уровне БД — работает между serverless инстансами
-    lock_key = abs(chat_id) % 2147483647  # pg_try_advisory_lock принимает int4
+    old_msg_id = db.get_list_message_id(chat_id)
 
-    try:
-        with db.get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
-                acquired = cur.fetchone()[0]
+    if old_msg_id:
+        tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
+        db.set_list_message_id(chat_id, None)
 
-            if not acquired:
-                return  # другой инстанс уже обновляет — пропускаем
+    text = build_message(chat_id)
+    if not text:
+        return
 
-            try:
-                old_msg_id = db.get_list_message_id(chat_id)
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "MarkdownV2",
+    }
+    btn = open_list_button(chat_id)
+    if btn:
+        payload["reply_markup"] = {"inline_keyboard": [[btn]]}
 
-                if old_msg_id:
-                    tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
-                    db.set_list_message_id(chat_id, None)
-
-                text = build_message(chat_id)
-                if not text:
-                    return
-
-                payload = {
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "MarkdownV2",
-                }
-                btn = open_list_button(chat_id)
-                if btn:
-                    payload["reply_markup"] = {"inline_keyboard": [[btn]]}
-
-                result = tg("sendMessage", payload)
-                if result.get("ok"):
-                    db.set_list_message_id(chat_id, result["result"]["message_id"])
-            finally:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
-    except Exception as e:
-        print(f"update_group_message error: {e}")
-
-
-def escape_md(text: str) -> str:
-    """Экранирование спецсимволов MarkdownV2."""
-    for ch in r"\_*[]()~`>#+-=|{}.!":
-        text = text.replace(ch, f"\\{ch}")
-    return text
+    result = tg("sendMessage", payload)
+    if result.get("ok"):
+        db.set_list_message_id(chat_id, result["result"]["message_id"])
 
 
 class handler(BaseHTTPRequestHandler):
@@ -153,28 +115,25 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": str(e)}, status=401)
             return
 
-        data      = self._body()
-        chat_id   = data.get("chat_id")
-        action    = data.get("action", "")
+        data          = self._body()
+        chat_id       = data.get("chat_id")
+        action        = data.get("action", "")
         group_chat_id = data.get("group_chat_id")
 
         if not chat_id or not action:
             self._json({"ok": False, "error": "missing fields"})
             return
 
-        # Уведомления работают только для групп
         target_id = int(group_chat_id) if group_chat_id else None
         if not target_id or not str(target_id).startswith("-"):
             self._json({"ok": True, "skipped": True})
             return
 
-        # Проверяем настройки
         settings = db.get_settings(target_id)
         if not settings.get(f"notif_{action}", True):
             self._json({"ok": True, "skipped": True})
             return
 
-        # Expense — отдельное разовое сообщение, не трогает живой список
         if action == "expense":
             actor  = data.get("user", "Удзельнік")
             amount = data.get("amount", "")
@@ -187,7 +146,6 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": True})
             return
 
-        # Для всех остальных действий — обновляем живое сообщение
         update_group_message(target_id)
         self._json({"ok": True})
 
