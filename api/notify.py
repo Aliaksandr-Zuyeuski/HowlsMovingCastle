@@ -119,11 +119,6 @@ def update_group_message(chat_id: int):
     except Exception as e:
         print(f"update_group_message error: {e}")
 
-    result = tg("sendMessage", payload)
-    if result.get("ok"):
-        new_id = result["result"]["message_id"]
-        db.set_list_message_id(chat_id, new_id)
-
 
 def escape_md(text: str) -> str:
     """Экранирование спецсимволов MarkdownV2."""
