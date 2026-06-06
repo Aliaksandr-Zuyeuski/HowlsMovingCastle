@@ -2,11 +2,9 @@
   "version": 2,
   "buildCommand": "cd webapp && npm install && npm run build",
   "outputDirectory": "webapp_dist",
-  "functions": {
-    "api/*.py": {
-      "runtime": "@vercel/python"
-    }
-  },
+  "builds": [
+    { "src": "api/*.py", "use": "@vercel/python" }
+  ],
   "routes": [
     { "src": "/api/webhook",  "dest": "/api/webhook.py" },
     { "src": "/api/items",    "dest": "/api/items.py" },
