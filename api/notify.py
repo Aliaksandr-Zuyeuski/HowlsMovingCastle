@@ -56,7 +56,7 @@ def build_message(chat_id: int) -> str | None:
         for item in actor_items:
             name = item["name"]
             if item["taken_by"]:
-                lines.append(f"• ~{name}~ 🟠")
+                lines.append(f"• ~{name}~ 🙋")
             else:
                 lines.append(f"• {name}")
         lines.append("")
