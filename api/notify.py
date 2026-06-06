@@ -65,28 +65,44 @@ def build_message(chat_id: int) -> str | None:
 
 
 def update_group_message(chat_id: int):
-    old_msg_id = db.get_list_message_id(chat_id)
+    lock_key = abs(chat_id) % 2147483647
 
-    if old_msg_id:
-        tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
-        db.set_list_message_id(chat_id, None)
+    try:
+        with db.get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
+                acquired = cur.fetchone()[0]
+            if not acquired:
+                return
 
-    text = build_message(chat_id)
-    if not text:
-        return
+            try:
+                old_msg_id = db.get_list_message_id(chat_id)
 
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "MarkdownV2",
-    }
-    btn = open_list_button(chat_id)
-    if btn:
-        payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+                if old_msg_id:
+                    tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
+                    db.set_list_message_id(chat_id, None)
 
-    result = tg("sendMessage", payload)
-    if result.get("ok"):
-        db.set_list_message_id(chat_id, result["result"]["message_id"])
+                text = build_message(chat_id)
+                if not text:
+                    return
+
+                payload = {
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "MarkdownV2",
+                }
+                btn = open_list_button(chat_id)
+                if btn:
+                    payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+
+                result = tg("sendMessage", payload)
+                if result.get("ok"):
+                    db.set_list_message_id(chat_id, result["result"]["message_id"])
+            finally:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
+    except Exception as e:
+        print(f"update_group_message error: {e}")
 
 
 class handler(BaseHTTPRequestHandler):
