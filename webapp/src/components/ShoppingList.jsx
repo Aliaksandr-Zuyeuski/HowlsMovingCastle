@@ -74,7 +74,7 @@ export function ShoppingList({ showToast }) {
 
   const load = useCallback(async () => {
     const fresh = await fetchItems();
-    setItems(fresh);
+    setItems(Array.isArray(fresh) ? fresh : []);
   }, []);
 
   // polling
@@ -83,7 +83,7 @@ export function ShoppingList({ showToast }) {
     const timer = setInterval(async () => {
       try {
         const fresh = await fetchItems();
-        if (JSON.stringify(fresh) !== JSON.stringify(itemsRef.current)) setItems(fresh);
+        if (Array.isArray(fresh) && JSON.stringify(fresh) !== JSON.stringify(itemsRef.current)) setItems(fresh);
       } catch (e) {}
     }, 12000);
     return () => clearInterval(timer);
@@ -130,9 +130,11 @@ export function ShoppingList({ showToast }) {
   }
 
   async function handleRelease(id) {
+    const name = items.find(i => i.id === id)?.name || '';
     haptic.light();
     setItems(prev => prev.map(i => i.id === id ? { ...i, taken_by: null } : i));
     apiReleaseItem(id)
+      .then(() => notify('release', name))
       .catch(() => showToast('⚠️ Памылка. ', () => handleRelease(id)));
   }
 
