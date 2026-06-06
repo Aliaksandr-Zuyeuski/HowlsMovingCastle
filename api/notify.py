@@ -46,22 +46,35 @@ def build_message(chat_id: int) -> str | None:
     if not active:
         return None
 
-    groups = {}
+    # Группируем по added_by для секции "дадаў/ла"
+    added_groups = {}
     for item in active:
-        groups.setdefault(item["added_by"], []).append(item)
+        added_groups.setdefault(item["added_by"], []).append(item)
 
     lines = []
-    for actor, actor_items in groups.items():
-        lines.append(f"🔔 *{actor}* дадаў/ла ў спіс:")
-        for item in actor_items:
-            name = item["name"]
-            if item["taken_by"]:
-                lines.append(f"• ~{name}~ 🙋")
-            else:
-                lines.append(f"• {name}")
+
+    # Секция 1 — товары по добавившему, только свободные
+    for actor, actor_items in added_groups.items():
+        free = [i for i in actor_items if not i["taken_by"]]
+        if free:
+            lines.append(f"🔔 *{actor}* дадаў/ла ў спіс:")
+            for item in free:
+                lines.append(f"• {item['name']}")
+            lines.append("")
+
+    # Секция 2 — взятые, сгруппированные по тому кто берёт
+    taken_groups = {}
+    for item in active:
+        if item["taken_by"]:
+            taken_groups.setdefault(item["taken_by"], []).append(item)
+
+    for taker, taken_items in taken_groups.items():
+        lines.append(f"🙋 *{taker}* бярэ:")
+        for item in taken_items:
+            lines.append(f"• {item['name']} 🙋")
         lines.append("")
 
-    return "\n".join(lines).strip()
+    return "\n".join(lines).strip() or None
 
 
 def update_group_message(chat_id: int):
