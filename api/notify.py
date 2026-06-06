@@ -76,29 +76,48 @@ def build_message(chat_id: int) -> str | None:
 def update_group_message(chat_id: int):
     """
     Удаляет старое сообщение, строит новое и отправляет.
-    Если товаров нет — просто удаляет без отправки нового.
+    Использует advisory lock PostgreSQL для предотвращения race condition.
     """
-    old_msg_id = db.get_list_message_id(chat_id)
+    # Берём advisory lock на уровне БД — работает между serverless инстансами
+    lock_key = abs(chat_id) % 2147483647  # pg_try_advisory_lock принимает int4
 
-    # Удаляем старое сообщение если есть
-    if old_msg_id:
-        tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
-        db.set_list_message_id(chat_id, None)
+    try:
+        with db.get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
+                acquired = cur.fetchone()[0]
 
-    # Строим новый текст
-    text = build_message(chat_id)
-    if not text:
-        return  # список пуст — сообщение удалено, новое не шлём
+            if not acquired:
+                return  # другой инстанс уже обновляет — пропускаем
 
-    # Кнопка открытия списка
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "MarkdownV2",
-    }
-    btn = open_list_button(chat_id)
-    if btn:
-        payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+            try:
+                old_msg_id = db.get_list_message_id(chat_id)
+
+                if old_msg_id:
+                    tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
+                    db.set_list_message_id(chat_id, None)
+
+                text = build_message(chat_id)
+                if not text:
+                    return
+
+                payload = {
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "MarkdownV2",
+                }
+                btn = open_list_button(chat_id)
+                if btn:
+                    payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+
+                result = tg("sendMessage", payload)
+                if result.get("ok"):
+                    db.set_list_message_id(chat_id, result["result"]["message_id"])
+            finally:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
+    except Exception as e:
+        print(f"update_group_message error: {e}")
 
     result = tg("sendMessage", payload)
     if result.get("ok"):
