@@ -40,6 +40,13 @@ def open_list_button(chat_id) -> dict | None:
     return None
 
 
+def escape_md(text: str) -> str:
+    """Экранирование спецсимволов MarkdownV2."""
+    for ch in r"\_*[]()~`>#+-=|{}.!":
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
+
 def build_message(chat_id: int) -> str | None:
     all_items = db.get_items(chat_id)
     active = [i for i in all_items if not i["done"]]
