@@ -55,7 +55,11 @@ def build_message(chat_id: int) -> str | None:
     if not active:
         return None
 
-    free  = [i for i in active if not i["taken_by"]]
+    # Показываем только done товары купленные после самого старого активного
+    oldest_date = min((i["created_at"] for i in active), default=None)
+    done_recent = [i for i in done if oldest_date and i["created_at"] >= oldest_date]
+
+    free = [i for i in active if not i["taken_by"]]
     taken_groups = {}
     for item in active:
         if item["taken_by"]:
@@ -77,10 +81,10 @@ def build_message(chat_id: int) -> str | None:
             lines.append(f"• _{escape_md(item['name'])}_")
         lines.append("")
 
-    # Секция 3 — куплено (зачёркнуто)
-    if done:
+    # Секция 3 — куплено в этой сессии (зачёркнуто)
+    if done_recent:
         lines.append("✅ Куплена:")
-        for item in done:
+        for item in done_recent:
             lines.append(f"• ~{escape_md(item['name'])}~")
         lines.append("")
 
@@ -113,6 +117,8 @@ def update_group_message(chat_id: int):
                 text = build_message(chat_id)
                 print(f"[notify] text built, empty={text is None}")
                 if not text:
+                    # список пуст — очищаем done товары
+                    db.clear_done(chat_id)
                     return
 
                 payload = {
