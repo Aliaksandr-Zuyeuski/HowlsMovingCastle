@@ -41,37 +41,40 @@ def open_list_button(chat_id) -> dict | None:
 
 
 def build_message(chat_id: int) -> str | None:
-    items = db.get_items(chat_id)
-    active = [i for i in items if not i["done"]]
+    all_items = db.get_items(chat_id)
+    active = [i for i in all_items if not i["done"]]
+    done   = [i for i in all_items if i["done"]]
+
     if not active:
         return None
 
-    # Группируем по added_by для секции "дадаў/ла"
-    added_groups = {}
-    for item in active:
-        added_groups.setdefault(item["added_by"], []).append(item)
-
-    lines = []
-
-    # Секция 1 — товары по добавившему, только свободные
-    for actor, actor_items in added_groups.items():
-        free = [i for i in actor_items if not i["taken_by"]]
-        if free:
-            lines.append(f"🔔 *{actor}* дадаў/ла ў спіс:")
-            for item in free:
-                lines.append(f"• {item['name']}")
-            lines.append("")
-
-    # Секция 2 — взятые, сгруппированные по тому кто берёт
+    free  = [i for i in active if not i["taken_by"]]
     taken_groups = {}
     for item in active:
         if item["taken_by"]:
             taken_groups.setdefault(item["taken_by"], []).append(item)
 
+    lines = []
+
+    # Секция 1 — общий список (без форматирования)
+    if free:
+        lines.append("🛒 Спіс:")
+        for item in free:
+            lines.append(f"• {escape_md(item['name'])}")
+        lines.append("")
+
+    # Секция 2 — кто что берёт (курсив)
     for taker, taken_items in taken_groups.items():
-        lines.append(f"🙋 *{taker}* бярэ:")
+        lines.append(f"🙋 _{escape_md(taker)}_ бярэ:")
         for item in taken_items:
-            lines.append(f"• {item['name']} 🙋")
+            lines.append(f"• _{escape_md(item['name'])}_")
+        lines.append("")
+
+    # Секция 3 — куплено (зачёркнуто)
+    if done:
+        lines.append("✅ Куплена:")
+        for item in done:
+            lines.append(f"• ~{escape_md(item['name'])}~")
         lines.append("")
 
     return "\n".join(lines).strip() or None
