@@ -1,5 +1,5 @@
 """
-api/notify.py — отправка уведомлений в Telegram-чат с учётом настроек
+api/notify.py — живое сообщение в группе: удаляет старое, шлёт новое
 """
 
 import os, json, sys, urllib.request
@@ -10,9 +10,135 @@ import database as db
 from auth import verify_init_data, AuthError
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
-WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "")
 BOT_APP_NAME = os.getenv("BOT_APP_NAME", "app")
+WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
+
+
+def tg(method: str, payload: dict) -> dict:
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/{method}",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        print(f"tg error {method}: {e}")
+        return {"ok": False}
+
+
+def open_list_button(chat_id) -> dict | None:
+    cid = str(chat_id)
+    if cid.startswith("-") and BOT_USERNAME and BOT_APP_NAME:
+        start_param = "g" + cid.lstrip("-")
+        return {"text": "🛒 Адкрыць спіс", "url": f"https://t.me/{BOT_USERNAME}/{BOT_APP_NAME}?startapp={start_param}"}
+    elif WEBAPP_URL:
+        return {"text": "🛒 Адкрыць спіс", "web_app": {"url": f"{WEBAPP_URL}?user_id={chat_id}"}}
+    return None
+
+
+def escape_md(text: str) -> str:
+    """Экранирование спецсимволов MarkdownV2."""
+    for ch in r"\_*[]()~`>#+-=|{}.!":
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
+
+def build_message(chat_id: int) -> str | None:
+    all_items = db.get_items(chat_id)
+    active = [i for i in all_items if not i["done"]]
+    done   = [i for i in all_items if i["done"]]
+
+    if not active:
+        return None
+
+    # Показываем только done товары купленные после самого старого активного
+    oldest_date = min((i["created_at"] for i in active), default=None)
+    done_recent = [i for i in done if oldest_date and i["created_at"] >= oldest_date]
+
+    free = [i for i in active if not i["taken_by"]]
+    taken_groups = {}
+    for item in active:
+        if item["taken_by"]:
+            taken_groups.setdefault(item["taken_by"], []).append(item)
+
+    lines = []
+
+    # Секция 1 — общий список (без форматирования)
+    if free:
+        lines.append("🛒 Спіс:")
+        for item in free:
+            lines.append(f"• {escape_md(item['name'])}")
+        lines.append("")
+
+    # Секция 2 — кто что берёт (курсив)
+    for taker, taken_items in taken_groups.items():
+        lines.append(f"🙋 _{escape_md(taker)}_ бярэ:")
+        for item in taken_items:
+            lines.append(f"• _{escape_md(item['name'])}_")
+        lines.append("")
+
+    # Секция 3 — куплено в этой сессии (зачёркнуто)
+    if done_recent:
+        lines.append("✅ Куплена:")
+        for item in done_recent:
+            lines.append(f"• ~{escape_md(item['name'])}~")
+        lines.append("")
+
+    return "\n".join(lines).strip() or None
+
+
+def update_group_message(chat_id: int):
+    print(f"[notify] update called for chat_id={chat_id}")
+    lock_key = abs(chat_id) % 2147483647
+
+    try:
+        with db.get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s) as acquired", (lock_key,))
+                acquired = cur.fetchone()["acquired"]
+            print(f"[notify] lock acquired={acquired}")
+            if not acquired:
+                print(f"[notify] skipped — another instance is updating")
+                return
+
+            try:
+                old_msg_id = db.get_list_message_id(chat_id)
+                print(f"[notify] old_msg_id={old_msg_id}")
+
+                if old_msg_id:
+                    r = tg("deleteMessage", {"chat_id": chat_id, "message_id": old_msg_id})
+                    print(f"[notify] deleteMessage result={r}")
+                    db.set_list_message_id(chat_id, None)
+
+                text = build_message(chat_id)
+                print(f"[notify] text built, empty={text is None}")
+                if not text:
+                    # список пуст — очищаем done товары
+                    db.clear_done(chat_id)
+                    return
+
+                payload = {
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "MarkdownV2",
+                }
+                btn = open_list_button(chat_id)
+                if btn:
+                    payload["reply_markup"] = {"inline_keyboard": [[btn]]}
+
+                result = tg("sendMessage", payload)
+                print(f"[notify] sendMessage ok={result.get('ok')} err={result.get('description','')}")
+                if result.get("ok"):
+                    db.set_list_message_id(chat_id, result["result"]["message_id"])
+            finally:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
+    except Exception as e:
+        print(f"[notify] exception: {e}")
 
 
 class handler(BaseHTTPRequestHandler):
@@ -23,7 +149,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "POST,OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type,X-Init-Data")
         self.end_headers()
         self.wfile.write(body)
 
@@ -41,89 +167,39 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": str(e)}, status=401)
             return
 
-        data = self._body()
-
-        chat_id        = data.get("chat_id")
-        group_chat_id  = data.get("group_chat_id")
-        action         = data.get("action", "")
-        name           = data.get("name", "")
-        amount         = data.get("amount", "")
-        actor          = data.get("user", "Удзельнік")
+        data          = self._body()
+        chat_id       = data.get("chat_id")
+        action        = data.get("action", "")
+        group_chat_id = data.get("group_chat_id")
 
         if not chat_id or not action:
             self._json({"ok": False, "error": "missing fields"})
             return
 
-        # Проверяем настройки — нужно ли слать уведомление
-        settings = db.get_settings(int(chat_id))
+        target_id = int(group_chat_id) if group_chat_id else None
+        if not target_id or not str(target_id).startswith("-"):
+            self._json({"ok": True, "skipped": True})
+            return
+
+        settings = db.get_settings(target_id)
         if not settings.get(f"notif_{action}", True):
             self._json({"ok": True, "skipped": True})
             return
 
-        # Для добавления — если несколько товаров, делаем список
-        if action == "add":
-            items = [i.strip() for i in name.split(",") if i.strip()]
-            if len(items) > 1:
-                bullet_list = "\n".join(f"• {i}" for i in items)
-                msg_text = f"🔔 *{actor}* дадаў/ла ў спіс:\n{bullet_list}"
-            else:
-                msg_text = f"🔔 *{actor}* дадаў/ла: *{name}*"
-        else:
-            notifications = {
-                "take":    f"🙋 *{actor}* бярэ: *{name}*",
-                "bought":  f"✅ *{actor}* купіў/ла: *{name}*",
-                "delete":  f"🗑 *{actor}* выдаліў/ла: *{name}*",
-                "expense": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
-            }
-            msg_text = notifications.get(action)
-
-        if not msg_text:
-            self._json({"ok": False, "error": "unknown action"})
+        if action == "expense":
+            actor  = data.get("user", "Удзельнік")
+            amount = data.get("amount", "")
+            name   = data.get("name", "")
+            tg("sendMessage", {
+                "chat_id": target_id,
+                "text": f"💰 *{actor}* дадаў/ла выдатак: *{amount} р* — {name}",
+                "parse_mode": "Markdown",
+            })
+            self._json({"ok": True})
             return
 
-        # Кнопка "Адкрыць спіс" — только для добавления товара
-        reply_markup = None
-        if action == "add":
-            target_id = group_chat_id or chat_id
-            is_group = str(target_id).startswith("-")
-
-            if is_group and BOT_USERNAME and BOT_APP_NAME:
-                start_param = "g" + str(target_id).lstrip("-")
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Адкрыць спіс",
-                        "url": f"https://t.me/{BOT_USERNAME}/{BOT_APP_NAME}?startapp={start_param}"
-                    }]]
-                }
-            elif WEBAPP_URL:
-                reply_markup = {
-                    "inline_keyboard": [[{
-                        "text": "🛒 Адкрыць спіс",
-                        "web_app": {"url": f"{WEBAPP_URL}?user_id={chat_id}"}
-                    }]]
-                }
-
-        payload = {
-            "chat_id": chat_id,
-            "text": msg_text,
-            "parse_mode": "Markdown"
-        }
-        if reply_markup:
-            payload["reply_markup"] = reply_markup
-
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        try:
-            with urllib.request.urlopen(req) as resp:
-                result = json.loads(resp.read())
-                self._json({"ok": result.get("ok", False)})
-        except Exception as e:
-            print(f"notify error: {e}")
-            self._json({"ok": False, "error": str(e)})
+        update_group_message(target_id)
+        self._json({"ok": True})
 
     def log_message(self, *args):
         pass

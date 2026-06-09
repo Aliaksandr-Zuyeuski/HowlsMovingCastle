@@ -41,11 +41,12 @@ def init_db():
 
                 CREATE TABLE IF NOT EXISTS settings (
                     chat_id BIGINT PRIMARY KEY,
-                    notif_add BOOLEAN DEFAULT TRUE,
-                    notif_take BOOLEAN DEFAULT TRUE,
-                    notif_bought BOOLEAN DEFAULT TRUE,
-                    notif_delete BOOLEAN DEFAULT TRUE,
-                    notif_expense BOOLEAN DEFAULT TRUE
+                    notif_add     BOOLEAN DEFAULT TRUE,
+                    notif_take    BOOLEAN DEFAULT TRUE,
+                    notif_bought  BOOLEAN DEFAULT TRUE,
+                    notif_delete  BOOLEAN DEFAULT TRUE,
+                    notif_expense BOOLEAN DEFAULT TRUE,
+                    list_message_id BIGINT DEFAULT NULL
                 );
             """)
         conn.commit()
@@ -165,17 +166,15 @@ def get_balance(chat_id: int):
     return totals, share
 
 
-# ── Настройки уведомлений ─────────────────────────────────────────
+# ── Настройки и message_id ────────────────────────────────────────
 
 def get_settings(chat_id: int) -> dict:
-    """Получить настройки уведомлений для чата. Если нет — вернуть дефолтные."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM settings WHERE chat_id=%s", (chat_id,))
             row = cur.fetchone()
     if row:
         return dict(row)
-    # Дефолт — все уведомления включены
     return {
         "chat_id": chat_id,
         "notif_add": True,
@@ -183,11 +182,11 @@ def get_settings(chat_id: int) -> dict:
         "notif_bought": True,
         "notif_delete": True,
         "notif_expense": True,
+        "list_message_id": None,
     }
 
 
 def save_settings(chat_id: int, settings: dict):
-    """Сохранить настройки уведомлений (upsert)."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -207,4 +206,23 @@ def save_settings(chat_id: int, settings: dict):
                 settings.get("notif_delete", True),
                 settings.get("notif_expense", True),
             ))
+        conn.commit()
+
+
+def get_list_message_id(chat_id: int) -> int | None:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT list_message_id FROM settings WHERE chat_id=%s", (chat_id,))
+            row = cur.fetchone()
+    return row["list_message_id"] if row else None
+
+
+def set_list_message_id(chat_id: int, message_id: int | None):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO settings (chat_id, list_message_id)
+                VALUES (%s, %s)
+                ON CONFLICT (chat_id) DO UPDATE SET list_message_id = EXCLUDED.list_message_id
+            """, (chat_id, message_id))
         conn.commit()
