@@ -1,6 +1,6 @@
 """
 api/items.py — REST API для списка покупок
-Vercel вызывает эту функцию для запросов /api/items
+Уведомления отправляются прямо отсюда — не зависят от мобильного браузера
 """
 
 import os, json, sys
@@ -11,6 +11,23 @@ from urllib.parse import urlparse, parse_qs
 import database as db
 from auth import verify_init_data, AuthError
 
+# Импортируем update_group_message из notify
+sys.path.insert(0, os.path.dirname(__file__))
+from notify import update_group_message
+
+
+def _notify(chat_id: int, group_chat_id: str | None, action: str):
+    """Вызываем обновление сообщения если это групповой чат."""
+    target = int(group_chat_id) if group_chat_id else None
+    if not target or not str(target).startswith("-"):
+        return
+    try:
+        settings = db.get_settings(target)
+        if settings.get(f"notif_{action}", True):
+            update_group_message(target)
+    except Exception as e:
+        print(f"notify error: {e}")
+
 
 class handler(BaseHTTPRequestHandler):
 
@@ -19,8 +36,8 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type,X-Init-Data")
         self.end_headers()
         self.wfile.write(body)
 
@@ -47,40 +64,42 @@ class handler(BaseHTTPRequestHandler):
         except AuthError as e:
             self._json({"ok": False, "error": str(e)}, status=401)
             return
-        qs = parse_qs(urlparse(self.path).query)
-        chat_id = int(qs.get("chat_id", [0])[0])
-        data = self._body()
-        action = qs.get("action", ["add"])[0]
+
+        qs           = parse_qs(urlparse(self.path).query)
+        chat_id      = int(qs.get("chat_id", [0])[0])
+        data         = self._body()
+        action       = qs.get("action", ["add"])[0]
+        group_chat_id = data.get("group_chat_id")
 
         if action == "add":
             names = [n.strip() for n in data.get("names", []) if n.strip()]
             db.add_items(chat_id, names, data.get("added_by", "?"))
             self._json({"ok": True, "names": names})
+            _notify(chat_id, group_chat_id, "add")
 
         elif action == "take":
             db.take_item(data["id"], data["user"])
             self._json({"ok": True})
+            _notify(chat_id, group_chat_id, "take")
 
         elif action == "release":
             db.release_item(data["id"])
             self._json({"ok": True})
+            _notify(chat_id, group_chat_id, "release")
 
         elif action == "buy":
             db.buy_item(data["id"], data["user"])
             self._json({"ok": True})
+            _notify(chat_id, group_chat_id, "bought")
 
         elif action == "delete":
             name = db.delete_item(data["id"])
             self._json({"ok": True, "name": name})
+            _notify(chat_id, group_chat_id, "delete")
 
         elif action == "clear":
             n = db.clear_done(chat_id)
             self._json({"ok": True, "removed": n})
-
-    def do_DELETE(self):
-        data = self._body()
-        name = db.delete_item(data["id"])
-        self._json({"ok": True, "name": name})
 
     def log_message(self, *args):
         pass
