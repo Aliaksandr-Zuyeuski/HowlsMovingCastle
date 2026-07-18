@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "cd webapp && npm install && npm run build",
+  "outputDirectory": "webapp_dist",
   "builds": [
     { "src": "api/*.py", "use": "@vercel/python" },
     {
@@ -8,12 +10,19 @@
       "config": { "distDir": "webapp_dist" }
     }
   ],
+  "crons": [
+    {
+      "path": "/api/ping",
+      "schedule": "0 12 * * *"
+    }
+  ],
   "routes": [
     { "src": "/api/webhook",  "dest": "/api/webhook.py" },
     { "src": "/api/items",    "dest": "/api/items.py" },
     { "src": "/api/expenses", "dest": "/api/expenses.py" },
     { "src": "/api/notify",   "dest": "/api/notify.py" },
     { "src": "/api/settings", "dest": "/api/settings.py" },
+    { "src": "/api/ping",     "dest": "/api/ping.py" },
     { "src": "/(.*)",         "dest": "/webapp/$1" }
   ]
 }
